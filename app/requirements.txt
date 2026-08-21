@@ -13,3 +13,4 @@ pypdf
 langchain-groq
 langchain_huggingface
 sentence-transformers 
+psycopg_pool
