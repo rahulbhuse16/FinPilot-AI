@@ -1,0 +1,15 @@
+fastapi
+uvicorn[standard]
+psycopg[binary]
+pydantic
+pydantic-settings
+python-multipart
+python-dotenv
+email-validator
+langchain
+langchain-openai
+langchain-text-splitters
+pypdf
+langchain-groq
+langchain_huggingface
+sentence-transformers 

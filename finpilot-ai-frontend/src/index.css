@@ -1,0 +1,87 @@
+@import "tailwindcss";
+
+@theme {
+  --font-display: "Manrope", "Segoe UI", ui-sans-serif, system-ui, sans-serif;
+  --font-body: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, monospace;
+
+  /* Core banking palette */
+  --color-navy-950: #060c17;
+  --color-navy-900: #0b1424;
+  --color-navy-800: #101d33;
+  --color-navy-700: #16294a;
+  --color-navy-600: #1e3760;
+  --color-slate-500: #5b6b85;
+  --color-slate-400: #7c8aa3;
+  --color-slate-300: #a6b1c4;
+  --color-slate-200: #ced5e2;
+  --color-slate-100: #e7ebf2;
+  --color-slate-50: #f4f6f9;
+
+  --color-accent-teal: #1f8a72;
+  --color-accent-teal-soft: #e5f4f0;
+  --color-positive: #1f8a5c;
+  --color-positive-soft: #e6f5ec;
+  --color-risk: #b5433a;
+  --color-risk-soft: #fbeae8;
+  --color-warning: #a8711b;
+  --color-warning-soft: #faf1de;
+}
+
+:root {
+  color-scheme: light;
+}
+
+html, body, #root {
+  height: 100%;
+}
+
+body {
+  font-family: var(--font-body);
+  background-color: var(--color-slate-50);
+  color: var(--color-navy-900);
+  -webkit-font-smoothing: antialiased;
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-slate-300) transparent;
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-thumb {
+  background-color: var(--color-slate-300);
+  border-radius: 8px;
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-accent-teal);
+  outline-offset: 2px;
+}
+
+.font-display {
+  font-family: var(--font-display);
+}
+
+.font-mono-num {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+@keyframes fade-in {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.animate-fade-in {
+  animation: fade-in 0.25s ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}

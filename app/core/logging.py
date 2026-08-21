@@ -1,0 +1,28 @@
+import logging
+import sys
+
+
+def setup_logging() -> None:
+    """
+    Configure application-wide logging.
+    """
+
+    logging.basicConfig(
+        level=logging.INFO,
+        format=(
+            "%(asctime)s | "
+            "%(levelname)s | "
+            "%(name)s | "
+            "%(message)s"
+        ),
+        handlers=[
+            logging.StreamHandler(sys.stdout),
+        ],
+    )
+
+
+def get_logger(name: str) -> logging.Logger:
+    """
+    Return a logger for the given module.
+    """
+    return logging.getLogger(name)
