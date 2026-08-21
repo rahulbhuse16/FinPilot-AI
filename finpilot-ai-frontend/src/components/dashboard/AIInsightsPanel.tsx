@@ -2,8 +2,7 @@ import {
   AlertTriangle,
   ArrowRight,
   CheckCircle2,
-  FileSearch,
-  HeartPulse,
+  
   ShieldAlert,
   Sparkles,
 } from "lucide-react";
