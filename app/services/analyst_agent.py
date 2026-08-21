@@ -2,7 +2,6 @@ from langchain_core.messages import (
     HumanMessage,
     SystemMessage,
 )
-from langchain_openai import ChatOpenAI
 from app.core.config import settings
 from app.services.financial_tools import (
     build_financial_tools,
