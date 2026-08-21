@@ -100,7 +100,7 @@ export const dashboardApi = {
   aiInsights: (signal?: AbortSignal) =>
     api
       .get<DashboardAIInsights>(
-        "/dashboard/a-insights",
+        "/dashboard/ai-insights",
         { signal }
       )
       .then((r) => r.data),

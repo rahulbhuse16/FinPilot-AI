@@ -59,6 +59,7 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         "http://localhost:5173",
+        "https://rahulbhuse16.github.io",
     ],
     allow_credentials=True,
     allow_methods=["*"],
