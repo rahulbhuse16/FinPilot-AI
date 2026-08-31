@@ -5,6 +5,7 @@ from app.models.customer import Customer
 from app.models.document import EMBEDDING_DIMENSIONS, Document, DocumentChunk
 from app.models.loan import Loan
 from app.models.transaction import Transaction
+from app.models.user import ROLE_ADMIN, ROLE_CUSTOMER, User
 
 
 __all__ = [
@@ -17,5 +18,8 @@ __all__ = [
     "EMBEDDING_DIMENSIONS",
     "Loan",
     "Message",
+    "ROLE_ADMIN",
+    "ROLE_CUSTOMER",
     "Transaction",
+    "User",
 ]

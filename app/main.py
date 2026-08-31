@@ -1,5 +1,5 @@
 from contextlib import asynccontextmanager
-from fastapi import FastAPI
+from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.api.middleware.request_logging import (
     request_logging_middleware,
@@ -9,6 +9,10 @@ from app.core.exceptions import (
 )
 from app.core.config import settings
 from app.core.database import connect_db, close_db
+from app.api.deps import require_admin
+from app.api.routes.admin import router as admin_router
+from app.api.routes.auth import router as auth_router
+from app.api.routes.portal import router as portal_router
 from app.api.routes.health import router as health_router
 from app.api.routes.customers import router as customers_router
 from app.api.routes.accounts import router as accounts_router
@@ -77,57 +81,39 @@ app.include_router(
 )
 
 app.include_router(
+    auth_router,
+    prefix=settings.api_prefix,
+)
+
+app.include_router(
+    portal_router,
+    prefix=settings.api_prefix,
+)
+
+app.include_router(
+    admin_router,
+    prefix=settings.api_prefix,
+)
+
+ADMIN_ONLY = [Depends(require_admin)]
+
+for admin_scoped_router in (
     customers_router,
-    prefix=settings.api_prefix,
-)
-
-app.include_router(
     accounts_router,
-    prefix=settings.api_prefix,
-)
-
-app.include_router(
     transactions_router,
-    prefix=settings.api_prefix,
-)
-
-app.include_router(
     loans_router,
-    prefix=settings.api_prefix,
-)
-
-app.include_router(
     customer_360_router,
-    prefix=settings.api_prefix,
-)
-
-app.include_router(
     documents_router,
-    prefix=settings.api_prefix,
-)
-
-app.include_router(
     ai_router,
-    prefix=settings.api_prefix,
-)
-
-app.include_router(
     analyst_router,
-    prefix=settings.api_prefix,
-)
-app.include_router(
     conversations_router,
-    prefix=settings.api_prefix,
-)
-
-app.include_router(
     anomalies_router,
-    prefix=settings.api_prefix,
-)
-
-app.include_router(
     dashboard_router,
-    prefix=settings.api_prefix,
-)
+):
+    app.include_router(
+        admin_scoped_router,
+        prefix=settings.api_prefix,
+        dependencies=ADMIN_ONLY,
+    )
 
 
