@@ -28,10 +28,10 @@ async def get_customers_list(
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=20, ge=1, le=100),
 ):
-    async with get_db() as connection:
+    async with get_db() as session:
 
         customers = await get_customers(
-            connection=connection,
+            session=session,
             search=search,
             page=page,
             page_size=page_size,
@@ -46,10 +46,10 @@ async def get_customers_list(
 )
 async def get_customer(customer_id: UUID):
 
-    async with get_db() as connection:
+    async with get_db() as session:
 
         customer = await get_customer_by_id(
-            connection,
+            session,
             customer_id,
         )
 

@@ -18,10 +18,10 @@ router = APIRouter(
 async def get_customer_loans_route(
     customer_id: UUID,
 ):
-    async with get_db() as connection:
+    async with get_db() as session:
 
         loans = await get_customer_loans(
-            connection,
+            session,
             customer_id,
         )
 

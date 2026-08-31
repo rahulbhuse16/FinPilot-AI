@@ -30,10 +30,10 @@ async def ask_financial_analyst(
     request: AnalystRequest,
 ):
 
-    async with get_db() as connection:
+    async with get_db() as session:
 
         history = await get_conversation_messages(
-            connection,
+            session,
             request.conversation_id,
             limit=20,
         )
@@ -47,14 +47,14 @@ async def ask_financial_analyst(
         ]
 
         await add_message(
-            connection=connection,
+            session=session,
             conversation_id=request.conversation_id,
             role="user",
             content=request.question,
         )
 
         result = await run_financial_analysis(
-            connection=connection,
+            session=session,
             question=request.question,
             customer_id=(
                 str(request.customer_id)
@@ -65,13 +65,13 @@ async def ask_financial_analyst(
         )
 
         await add_message(
-            connection=connection,
+            session=session,
             conversation_id=request.conversation_id,
             role="assistant",
             content=result["answer"],
         )
 
-        await connection.commit()
+        await session.commit()
 
     return {
         "answer": result["answer"],

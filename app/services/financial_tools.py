@@ -1,6 +1,7 @@
 from uuid import UUID
 
 from langchain_core.tools import tool
+from sqlalchemy.ext.asyncio import AsyncSession
 from app.services.embedding_service import (
     generate_embeddings,
 )
@@ -10,7 +11,7 @@ from app.services.vector_service import (
 )
 
 
-def build_financial_tools(connection):
+def build_financial_tools(session: AsyncSession):
 
     @tool
     async def get_customer_360(
@@ -34,7 +35,7 @@ def build_financial_tools(connection):
         )
 
         result = await fetch_customer_360(
-            connection,
+            session,
             UUID(customer_id),
         )
 
@@ -74,7 +75,7 @@ def build_financial_tools(connection):
         )
 
         transactions = await fetch_transactions(
-            connection,
+            session,
             UUID(customer_id),
             limit,
         )
@@ -111,7 +112,7 @@ def build_financial_tools(connection):
         )
 
         loans = await fetch_loans(
-            connection,
+            session,
             UUID(customer_id),
         )
 
@@ -147,7 +148,7 @@ def build_financial_tools(connection):
     )
 
         return await detect_anomalies(
-        connection,
+        session,
         UUID(customer_id),
     )
 
@@ -177,7 +178,7 @@ def build_financial_tools(connection):
         )[0]
 
         results = await similarity_search(
-            connection=connection,
+            session=session,
             query_embedding=query_embedding,
             top_k=5,
         )

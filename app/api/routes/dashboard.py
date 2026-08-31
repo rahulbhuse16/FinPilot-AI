@@ -1,6 +1,8 @@
 from fastapi import APIRouter
+from sqlalchemy import select
 
 from app.core.database import get_db
+from app.models import Customer
 from app.services.dashboard_service import (
     get_dashboard_overview,
 )
@@ -27,26 +29,15 @@ async def dashboard_overview():
 @router.get("/ai-insights",response_model=AIInsightsResponse)
 async def dashboard_ai_insights():
 
-    async with get_db() as connection:
+    async with get_db() as session:
 
-        async with connection.cursor() as cursor:
-
-            await cursor.execute(
-                """
-                SELECT id
-                FROM customers
-                ORDER BY id
-                """
+        customer_ids = list(
+            await session.scalars(
+                select(Customer.id).order_by(Customer.id)
             )
-
-            rows = await cursor.fetchall()
-
-        customer_ids = [
-            row[0]
-            for row in rows
-        ]
+        )
 
         return await generate_ai_insights(
-            connection,
+            session,
             customer_ids,
         )

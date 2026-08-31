@@ -1,101 +1,83 @@
 from uuid import UUID
 
-from psycopg.rows import dict_row
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.models import Conversation, Message
 
 
 async def create_conversation(
-    connection,
+    session: AsyncSession,
     customer_id: UUID | None,
     title: str | None,
-):
-    async with connection.cursor(
-        row_factory=dict_row
-    ) as cursor:
+) -> dict:
 
-        await cursor.execute(
-            """
-            INSERT INTO conversations (
-                customer_id,
-                title
-            )
-            VALUES (%s, %s)
-            RETURNING
-                id,
-                customer_id,
-                title,
-                created_at,
-                updated_at
-            """,
-            (
-                customer_id,
-                title,
-            ),
-        )
+    conversation = Conversation(
+        customer_id=customer_id,
+        title=title,
+    )
 
-        return await cursor.fetchone()
+    session.add(conversation)
+
+    await session.flush()
+    await session.refresh(conversation)
+
+    return {
+        "id": conversation.id,
+        "customer_id": conversation.customer_id,
+        "title": conversation.title,
+        "created_at": conversation.created_at,
+        "updated_at": conversation.updated_at,
+    }
 
 
 async def add_message(
-    connection,
+    session: AsyncSession,
     conversation_id: UUID,
     role: str,
     content: str,
-):
-    async with connection.cursor(
-        row_factory=dict_row
-    ) as cursor:
+) -> dict:
 
-        await cursor.execute(
-            """
-            INSERT INTO messages (
-                conversation_id,
-                role,
-                content
-            )
-            VALUES (%s, %s, %s)
-            RETURNING
-                id,
-                role,
-                content,
-                created_at
-            """,
-            (
-                conversation_id,
-                role,
-                content,
-            ),
-        )
+    message = Message(
+        conversation_id=conversation_id,
+        role=role,
+        content=content,
+    )
 
-        return await cursor.fetchone()
+    session.add(message)
+
+    await session.flush()
+    await session.refresh(message)
+
+    return {
+        "id": message.id,
+        "role": message.role,
+        "content": message.content,
+        "created_at": message.created_at,
+    }
 
 
 async def get_conversation_messages(
-    connection,
+    session: AsyncSession,
     conversation_id: UUID,
     limit: int = 20,
-):
-    async with connection.cursor(
-        row_factory=dict_row
-    ) as cursor:
+) -> list[dict]:
 
-        await cursor.execute(
-            """
-            SELECT
-                id,
-                role,
-                content,
-                created_at
-            FROM messages
-            WHERE conversation_id = %s
-            ORDER BY created_at DESC
-            LIMIT %s
-            """,
-            (
-                conversation_id,
-                limit,
-            ),
+    result = await session.execute(
+        select(
+            Message.id,
+            Message.role,
+            Message.content,
+            Message.created_at,
         )
+        .where(Message.conversation_id == conversation_id)
+        .order_by(Message.created_at.desc())
+        .limit(limit)
+    )
 
-        rows = await cursor.fetchall()
+    rows = [
+        dict(row)
+        for row in result.mappings().all()
+    ]
 
     return list(reversed(rows))

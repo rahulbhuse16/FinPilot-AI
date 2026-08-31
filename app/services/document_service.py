@@ -1,7 +1,10 @@
 import hashlib
 from uuid import UUID
 
-from psycopg.rows import dict_row
+from sqlalchemy import func, update
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.models import Document
 
 
 def calculate_file_hash(content: bytes) -> str:
@@ -9,62 +12,50 @@ def calculate_file_hash(content: bytes) -> str:
 
 
 async def create_document(
-    connection,
+    session: AsyncSession,
     file_name: str,
     content_type: str,
     file_size: int,
     content_hash: str,
-):
-    async with connection.cursor(row_factory=dict_row) as cursor:
+) -> dict:
 
-        await cursor.execute(
-            """
-            INSERT INTO documents (
-                file_name,
-                content_type,
-                file_size,
-                content_hash,
-                status
-            )
-            VALUES (%s, %s, %s, %s, 'PROCESSING')
-            RETURNING
-                id,
-                file_name,
-                content_type,
-                file_size,
-                status,
-                chunk_count,
-                created_at
-            """,
-            (
-                file_name,
-                content_type,
-                file_size,
-                content_hash,
-            ),
-        )
+    document = Document(
+        file_name=file_name,
+        content_type=content_type,
+        file_size=file_size,
+        content_hash=content_hash,
+        status="PROCESSING",
+    )
 
-        return await cursor.fetchone()
+    session.add(document)
+
+    await session.flush()
+    await session.refresh(document)
+
+    return {
+        "id": document.id,
+        "file_name": document.file_name,
+        "content_type": document.content_type,
+        "file_size": document.file_size,
+        "status": document.status,
+        "chunk_count": document.chunk_count,
+        "created_at": document.created_at,
+    }
 
 
 async def update_document_status(
-    connection,
+    session: AsyncSession,
     document_id: UUID,
     status: str,
     chunk_count: int,
-):
-    await connection.execute(
-        """
-        UPDATE documents
-        SET
-            status = %s,
-            chunk_count = %s,
-            updated_at = NOW()
-        WHERE id = %s
-        """,
-        (
-            status,
-            chunk_count,
-            document_id,
-        ),
+) -> None:
+
+    await session.execute(
+        update(Document)
+        .where(Document.id == document_id)
+        .values(
+            status=status,
+            chunk_count=chunk_count,
+            updated_at=func.now(),
+        )
     )

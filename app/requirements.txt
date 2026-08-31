@@ -1,7 +1,8 @@
 fastapi
 uvicorn[standard]
-psycopg[binary]
-psycopg_pool
+sqlalchemy[asyncio]>=2.0
+psycopg[binary,pool]
+pgvector
 pydantic
 pydantic-settings
 python-multipart
@@ -13,4 +14,3 @@ langchain-text-splitters
 langchain-groq
 pypdf
 fastembed
-psycopg_pool

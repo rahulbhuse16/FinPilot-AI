@@ -1,29 +1,31 @@
 from uuid import UUID
 
-from psycopg.rows import dict_row
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.models import Loan
 
 
 async def get_customer_loans(
-    connection,
+    session: AsyncSession,
     customer_id: UUID,
-):
-    async with connection.cursor(row_factory=dict_row) as cursor:
+) -> list[dict]:
 
-        await cursor.execute(
-            """
-            SELECT
-                id,
-                loan_type,
-                principal_amount,
-                outstanding_amount,
-                interest_rate,
-                monthly_emi,
-                status
-            FROM loans
-            WHERE customer_id = %s
-            ORDER BY created_at DESC
-            """,
-            (customer_id,),
+    result = await session.execute(
+        select(
+            Loan.id,
+            Loan.loan_type,
+            Loan.principal_amount,
+            Loan.outstanding_amount,
+            Loan.interest_rate,
+            Loan.monthly_emi,
+            Loan.status,
         )
+        .where(Loan.customer_id == customer_id)
+        .order_by(Loan.created_at.desc())
+    )
 
-        return await cursor.fetchall()
+    return [
+        dict(row)
+        for row in result.mappings().all()
+    ]

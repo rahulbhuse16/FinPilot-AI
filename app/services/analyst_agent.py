@@ -2,6 +2,8 @@ from langchain_core.messages import (
     HumanMessage,
     SystemMessage,
 )
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from app.core.config import settings
 from app.services.financial_tools import (
     build_financial_tools,
@@ -429,12 +431,12 @@ Your goal is not to sound confident.
 Your goal is to be correct, grounded, transparent, and useful.
 """
 
-def create_analyst_agent(connection):
+def create_analyst_agent(session: AsyncSession):
 
    
 
     tools = build_financial_tools(
-        connection
+        session
     )
 
     return llm.bind_tools(tools)
@@ -442,17 +444,17 @@ def create_analyst_agent(connection):
 
 
 async def run_financial_analysis(
-    connection,
+    session: AsyncSession,
     question: str,
     customer_id: str | None,
     history: list,
 ):
     llm = create_analyst_agent(
-        connection
+        session
     )
 
     tools = build_financial_tools(
-        connection
+        session
     )
 
     tool_map = {

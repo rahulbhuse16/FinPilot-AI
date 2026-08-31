@@ -26,10 +26,10 @@ async def ask_ai(
     request: AskRequest,
 ):
 
-    async with get_db() as connection:
+    async with get_db() as session:
 
         result = await answer_question(
-            connection=connection,
+            session=session,
             question=request.question,
         )
 
