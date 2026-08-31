@@ -67,12 +67,12 @@ async def upload_document(
         texts
     )
 
-    async with get_db() as connection:
+    async with get_db() as session:
 
         try:
 
             document = await create_document(
-                connection=connection,
+                session=session,
                 file_name=file.filename or "unknown.pdf",
                 content_type=file.content_type,
                 file_size=len(content),
@@ -80,20 +80,20 @@ async def upload_document(
             )
 
             await insert_chunks(
-                connection=connection,
+                session=session,
                 document_id=document["id"],
                 chunks=chunks,
                 embeddings=embeddings,
             )
 
             await update_document_status(
-                connection=connection,
+                session=session,
                 document_id=document["id"],
                 status="READY",
                 chunk_count=len(chunks),
             )
 
-            await connection.commit()
+            await session.commit()
 
             document["status"] = "READY"
             document["chunk_count"] = len(chunks)
@@ -102,6 +102,6 @@ async def upload_document(
 
         except Exception:
 
-            await connection.rollback()
+            await session.rollback()
 
             raise

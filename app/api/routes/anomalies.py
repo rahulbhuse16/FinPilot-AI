@@ -21,9 +21,9 @@ async def transaction_anomalies(
     customer_id: str,
 ):
 
-    async with get_db() as connection:
+    async with get_db() as session:
 
         return await detect_transaction_anomalies(
-            connection,
+            session,
             customer_id,
         )

@@ -1,4 +1,5 @@
 from fastapi import APIRouter
+from sqlalchemy import text
 
 from app.core.database import get_db
 from app.schemas.health import HealthResponse
@@ -20,10 +21,10 @@ async def health_check():
 
     try:
 
-        async with get_db() as connection:
+        async with get_db() as session:
 
-            await connection.execute(
-                "SELECT 1"
+            await session.execute(
+                text("SELECT 1")
             )
 
     except Exception:

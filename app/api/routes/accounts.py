@@ -20,10 +20,10 @@ router = APIRouter(
 async def get_customer_accounts(
     customer_id: UUID,
 ):
-    async with get_db() as connection:
+    async with get_db() as session:
 
         accounts = await get_accounts_by_customer(
-            connection,
+            session,
             customer_id,
         )
 

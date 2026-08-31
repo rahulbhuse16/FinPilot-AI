@@ -1,3 +1,5 @@
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from app.core.config import settings
 from app.services.embedding_service import generate_embeddings
 from app.services.llm_service import llm
@@ -6,7 +8,7 @@ from app.services.vector_service import similarity_search
 
 
 async def answer_question(
-    connection,
+    session: AsyncSession,
     question: str,
 ):
 
@@ -25,7 +27,7 @@ async def answer_question(
     # ----------------------------------
 
     chunks = await similarity_search(
-        connection=connection,
+        session=session,
         query_embedding=query_embedding,
         top_k=settings.rag_top_k,
     )

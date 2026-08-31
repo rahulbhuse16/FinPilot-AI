@@ -26,14 +26,14 @@ async def create_new_conversation(
     request: CreateConversationRequest,
 ):
 
-    async with get_db() as connection:
+    async with get_db() as session:
 
         conversation = await create_conversation(
-            connection=connection,
+            session=session,
             customer_id=request.customer_id,
             title=request.title,
         )
 
-        await connection.commit()
+        await session.commit()
 
     return conversation

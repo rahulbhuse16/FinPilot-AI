@@ -27,10 +27,10 @@ async def get_transactions(
         le=200,
     ),
 ):
-    async with get_db() as connection:
+    async with get_db() as session:
 
         transactions = await get_customer_transactions(
-            connection,
+            session,
             customer_id,
             limit,
         )

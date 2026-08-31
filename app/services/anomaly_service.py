@@ -1,47 +1,38 @@
 from decimal import Decimal
 from uuid import UUID
 
-from psycopg.rows import dict_row
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.models import Account, Transaction
 
 
 async def detect_transaction_anomalies(
-    connection,
-    customer_id: str,
+    session: AsyncSession,
+    customer_id: UUID | str,
     limit: int = 50,
-):
-    async with connection.cursor(
-        row_factory=dict_row
-    ) as cursor:
+) -> list[dict]:
 
-        await cursor.execute(
-            """
-            SELECT
-                t.id,
-                t.amount,
-                t.transaction_type,
-                t.category,
-                t.merchant,
-                t.description,
-                t.transaction_time
-
-            FROM transactions t
-
-            INNER JOIN accounts a
-                ON a.id = t.account_id
-
-            WHERE a.customer_id = %s
-
-            ORDER BY t.transaction_time DESC
-
-            LIMIT %s
-            """,
-            (
-                customer_id,
-                limit,
-            ),
+    result = await session.execute(
+        select(
+            Transaction.id,
+            Transaction.amount,
+            Transaction.transaction_type,
+            Transaction.category,
+            Transaction.merchant,
+            Transaction.description,
+            Transaction.transaction_time,
         )
+        .join(Account, Account.id == Transaction.account_id)
+        .where(Account.customer_id == customer_id)
+        .order_by(Transaction.transaction_time.desc())
+        .limit(limit)
+    )
 
-        transactions = await cursor.fetchall()
+    transactions = [
+        dict(row)
+        for row in result.mappings().all()
+    ]
 
     if not transactions:
         return []

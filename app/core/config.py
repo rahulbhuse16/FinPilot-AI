@@ -24,6 +24,22 @@ class Settings(BaseSettings):
     rag_chunk_size: int = 1000
     rag_chunk_overlap: int = 150
 
+    @property
+    def sqlalchemy_database_url(self) -> str:
+        url = self.database_url
+
+        if url.startswith("postgres://"):
+            url = url.replace("postgres://", "postgresql://", 1)
+
+        if url.startswith("postgresql://"):
+            url = url.replace(
+                "postgresql://",
+                "postgresql+psycopg://",
+                1,
+            )
+
+        return url
+
     model_config = SettingsConfigDict(
         env_file=BASE_DIR / ".env",
         env_file_encoding="utf-8",

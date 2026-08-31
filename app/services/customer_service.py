@@ -1,103 +1,84 @@
 from uuid import UUID
-from psycopg.rows import dict_row
+
+from sqlalchemy import func, or_, select
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.models import Customer
 
 
-async def get_customer_by_id(connection, customer_id: UUID):
+CUSTOMER_COLUMNS = (
+    Customer.id,
+    Customer.customer_code,
+    Customer.full_name,
+    Customer.email,
+    Customer.phone,
+    Customer.monthly_income,
+    Customer.credit_score,
+    Customer.risk_level,
+)
 
-    async with connection.cursor(row_factory=dict_row) as cursor:
-        await cursor.execute(
-            """
-            SELECT
-                id,
-                customer_code,
-                full_name,
-                email,
-                phone,
-                monthly_income,
-                credit_score,
-                risk_level
-            FROM customers
-            WHERE id = %s
-            """,
-            (customer_id,),
+
+async def get_customer_by_id(
+    session: AsyncSession,
+    customer_id: UUID,
+) -> dict | None:
+
+    result = await session.execute(
+        select(*CUSTOMER_COLUMNS).where(
+            Customer.id == customer_id
         )
+    )
 
-        return await cursor.fetchone()
+    row = result.mappings().one_or_none()
+
+    return dict(row) if row else None
 
 
 async def get_customers(
-    connection,
+    session: AsyncSession,
     search: str | None = None,
     page: int = 1,
     page_size: int = 20,
-):
+) -> dict:
+
     offset = (page - 1) * page_size
 
-    search_pattern = f"%{search}%" if search else None
+    filters = []
 
-    async with connection.cursor(row_factory=dict_row) as cursor:
+    if search:
+        search_pattern = f"%{search}%"
 
-        # Count
-        await cursor.execute(
-            """
-            SELECT COUNT(*)
-            FROM customers
-            WHERE (
-                %s::text IS NULL
-                OR full_name ILIKE %s
-                OR email ILIKE %s
-                OR customer_code ILIKE %s
+        filters.append(
+            or_(
+                Customer.full_name.ilike(search_pattern),
+                Customer.email.ilike(search_pattern),
+                Customer.customer_code.ilike(search_pattern),
             )
-            """,
-            (
-                search_pattern,
-                search_pattern,
-                search_pattern,
-                search_pattern,
-            ),
         )
 
-        total = (await cursor.fetchone())["count"]
+    total = await session.scalar(
+        select(func.count())
+        .select_from(Customer)
+        .where(*filters)
+    )
 
-        # Customers
-        await cursor.execute(
-            """
-            SELECT
-                id,
-                customer_code,
-                full_name,
-                email,
-                phone,
-                monthly_income,
-                credit_score,
-                risk_level
-            FROM customers
-            WHERE (
-                %s::text IS NULL
-                OR full_name ILIKE %s
-                OR email ILIKE %s
-                OR customer_code ILIKE %s
-            )
-            ORDER BY full_name
-            LIMIT %s
-            OFFSET %s
-            """,
-            (
-                search_pattern,
-                search_pattern,
-                search_pattern,
-                search_pattern,
-                page_size,
-                offset,
-            ),
-        )
+    result = await session.execute(
+        select(*CUSTOMER_COLUMNS)
+        .where(*filters)
+        .order_by(Customer.full_name)
+        .limit(page_size)
+        .offset(offset)
+    )
 
-        items = await cursor.fetchall()
+    items = [
+        dict(row)
+        for row in result.mappings().all()
+    ]
 
-        return {
-            "items": items,
-            "total": total,
-            "page": page,
-            "page_size": page_size,
-            "total_pages": (total + page_size - 1) // page_size,
-        }
+    return {
+        "items": items,
+        "total": total,
+        "page": page,
+        "page_size": page_size,
+        "total_pages": (total + page_size - 1) // page_size,
+    }
