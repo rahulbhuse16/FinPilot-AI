@@ -20,6 +20,10 @@ class Settings(BaseSettings):
     openai_chat_model: str = "gpt-4o-mini"
     openai_embedding_model: str = "text-embedding-3-small"
 
+    jwt_secret_key: str = "change-me-in-production"
+    jwt_algorithm: str = "HS256"
+    jwt_expire_minutes: int = 60 * 12
+
     rag_top_k: int = 5
     rag_chunk_size: int = 1000
     rag_chunk_overlap: int = 150

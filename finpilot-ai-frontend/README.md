@@ -33,14 +33,22 @@ VITE_API_BASE_URL=http://localhost:8000/api/v1
 src/
 ├── api/          # centralized Axios instance + one module per resource
 ├── components/   # layout, ui, ai, customer, transactions, documents, financial
-├── hooks/        # useFetch (abortable), useDebounce, useAnalystConversation
-├── layouts/      # AppLayout (sidebar + topbar shell)
+├── hooks/        # useFetch (abortable), useDebounce, useAnalystConversation, useAuth
+├── layouts/      # AppLayout (admin sidebar + topbar), PortalLayout (customer portal)
 ├── pages/        # one page per route, lazy-loaded
 ├── routes/       # AppRoutes.tsx
-├── store/        # Redux Toolkit (selected customer — the only global state)
+├── store/        # Redux Toolkit (authSlice, selected customer)
 ├── types/        # domain + API TypeScript interfaces
 └── utils/        # currency/date formatting, className helper, list normalization
 ```
+
+## Authentication
+
+The application uses JWT bearer tokens with role-based access control (RBAC). Two roles are supported:
+- **ADMIN** — access to the full console with analytics, investigations, and customer management
+- **CUSTOMER** — access to a self-service portal showing their own accounts, transactions, loans, and profile
+
+Register at `/register` or login at `/login`. Routes are protected with `RequireRole` wrappers that enforce role checks.
 
 ## Features
 
@@ -49,9 +57,11 @@ src/
 3. **Transaction Intelligence** (`/transactions`) — activity table plus anomaly detection.
 4. **Document / RAG Center** (`/documents`) — PDF upload with progress, processing states, and a chunking → embeddings → vector search pipeline explainer.
 5. **Investigation Workspace** (`/investigation`) — tabbed view across health, transactions, loans, anomalies, and multi-tool AI analysis for a selected customer.
+6. **Customer Portal** (`/portal/*`) — self-service view for customers to see their overview, accounts, transactions, loans, and profile information.
 
 ## Notes
 
 - All requests go through `src/api/axios.ts`; no component calls Axios directly.
 - Backend response shape uncertainty is isolated in `src/api/*` and `src/types/domain.ts` rather than spread through the app as `any`.
 - Every API-driven screen implements loading, success, empty, and error states.
+- Authentication state is managed by `authSlice` and persisted to localStorage via `authStorage` utilities; 401 responses trigger automatic sign-out and redirect to login.

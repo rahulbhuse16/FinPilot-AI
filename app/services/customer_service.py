@@ -34,6 +34,69 @@ async def get_customer_by_id(
     return dict(row) if row else None
 
 
+async def create_customer(
+    session: AsyncSession,
+    values: dict,
+) -> dict:
+
+    customer = Customer(**values)
+
+    session.add(customer)
+
+    await session.flush()
+    await session.refresh(customer)
+
+    return _serialize(customer)
+
+
+async def update_customer(
+    session: AsyncSession,
+    customer_id: UUID,
+    updates: dict,
+) -> dict | None:
+
+    customer = await session.get(Customer, customer_id)
+
+    if not customer:
+        return None
+
+    for field, value in updates.items():
+        setattr(customer, field, value)
+
+    await session.flush()
+    await session.refresh(customer)
+
+    return _serialize(customer)
+
+
+async def delete_customer(
+    session: AsyncSession,
+    customer_id: UUID,
+) -> bool:
+
+    customer = await session.get(Customer, customer_id)
+
+    if not customer:
+        return False
+
+    await session.delete(customer)
+
+    return True
+
+
+def _serialize(customer: Customer) -> dict:
+    return {
+        "id": customer.id,
+        "customer_code": customer.customer_code,
+        "full_name": customer.full_name,
+        "email": customer.email,
+        "phone": customer.phone,
+        "monthly_income": customer.monthly_income,
+        "credit_score": customer.credit_score,
+        "risk_level": customer.risk_level,
+    }
+
+
 async def get_customers(
     session: AsyncSession,
     search: str | None = None,

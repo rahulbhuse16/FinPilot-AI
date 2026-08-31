@@ -7,7 +7,16 @@ from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import SessionLocal, close_db, connect_db
-from app.models import Account, Customer, Loan, Transaction
+from app.core.security import hash_password
+from app.models import (
+    ROLE_ADMIN,
+    ROLE_CUSTOMER,
+    Account,
+    Customer,
+    Loan,
+    Transaction,
+    User,
+)
 
 
 CUSTOMERS = [
@@ -105,6 +114,38 @@ LOANS = [
         "interest_rate": 14.5,
         "monthly_emi": 21000,
         "status": "ACTIVE",
+    },
+]
+
+
+USERS = [
+    {
+        "email": "admin@finpilot.ai",
+        "full_name": "FinPilot Admin",
+        "password": "Admin@12345",
+        "role": ROLE_ADMIN,
+        "customer_code": None,
+    },
+    {
+        "email": "amit@example.com",
+        "full_name": "Amit Sharma",
+        "password": "Customer@12345",
+        "role": ROLE_CUSTOMER,
+        "customer_code": "CUST-1001",
+    },
+    {
+        "email": "riya@example.com",
+        "full_name": "Riya Patel",
+        "password": "Customer@12345",
+        "role": ROLE_CUSTOMER,
+        "customer_code": "CUST-1002",
+    },
+    {
+        "email": "rahul@example.com",
+        "full_name": "Rahul Mehta",
+        "password": "Customer@12345",
+        "role": ROLE_CUSTOMER,
+        "customer_code": "CUST-1003",
     },
 ]
 
@@ -275,6 +316,33 @@ async def seed_transactions(
     )
 
 
+async def seed_users(
+    session: AsyncSession,
+    customer_map: dict,
+) -> None:
+
+    await session.execute(
+        insert(User)
+        .values(
+            [
+                {
+                    "email": user["email"],
+                    "full_name": user["full_name"],
+                    "password_hash": hash_password(user["password"]),
+                    "role": user["role"],
+                    "customer_id": (
+                        customer_map[user["customer_code"]]
+                        if user["customer_code"]
+                        else None
+                    ),
+                }
+                for user in USERS
+            ]
+        )
+        .on_conflict_do_nothing(index_elements=["email"])
+    )
+
+
 async def seed() -> None:
 
     await connect_db()
@@ -288,6 +356,8 @@ async def seed() -> None:
         await seed_loans(session, customer_map)
 
         await seed_transactions(session, account_map)
+
+        await seed_users(session, customer_map)
 
         await session.commit()
 
