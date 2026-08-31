@@ -16,6 +16,7 @@ from app.services.user_service import (
     create_user,
     get_customer_by_code,
     get_user_by_email,
+    has_user_for_customer,
 )
 
 
@@ -61,10 +62,19 @@ async def register(
             payload.customer_code,
         )
 
-        if not customer:
+        if not customer or customer.email.lower() != payload.email.lower():
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail="Customer code not found",
+                detail=(
+                    "No customer profile matches that code and email. "
+                    "Contact support to link your account."
+                ),
+            )
+
+        if await has_user_for_customer(session, customer.id):
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="This customer profile already has a login",
             )
     else:
         customer = await create_customer_profile(

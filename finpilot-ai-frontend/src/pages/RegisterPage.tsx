@@ -113,7 +113,8 @@ export function RegisterPage() {
               className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-navy-900"
             />
             <span className="mt-1 block text-xs text-slate-400">
-              Link to an existing bank profile, or leave blank to create a new one.
+              Link an existing bank profile — the code must match the email we hold on file.
+              Leave blank to create a new profile.
             </span>
           </label>
 

@@ -79,6 +79,18 @@ async def get_customer_by_code(
     )
 
 
+async def has_user_for_customer(
+    session: AsyncSession,
+    customer_id: UUID,
+) -> bool:
+
+    existing = await session.scalar(
+        select(User.id).where(User.customer_id == customer_id)
+    )
+
+    return existing is not None
+
+
 async def create_customer_profile(
     session: AsyncSession,
     full_name: str,

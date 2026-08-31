@@ -12,13 +12,7 @@ const inputClass =
   "mt-1 w-full rounded-lg border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-navy-900";
 const labelClass = "text-xs font-medium uppercase tracking-wide text-slate-500";
 
-function PersonalDetailsForm({
-  customer,
-  onSaved,
-}: {
-  customer: Customer;
-  onSaved: () => void;
-}) {
+function PersonalDetailsForm({ customer }: { customer: Customer }) {
   const [fullName, setFullName] = useState(String(customer.full_name ?? ""));
   const [email, setEmail] = useState(String(customer.email ?? ""));
   const [phone, setPhone] = useState(String(customer.phone ?? ""));
@@ -33,9 +27,15 @@ function PersonalDetailsForm({
     setSaving(true);
 
     try {
-      await portalApi.updateProfile({ full_name: fullName, email, phone: phone || undefined });
+      const updated = await portalApi.updateProfile({
+        full_name: fullName,
+        email,
+        phone: phone || undefined,
+      });
+      setFullName(String(updated.full_name ?? ""));
+      setEmail(String(updated.email ?? ""));
+      setPhone(String(updated.phone ?? ""));
       setMessage("Profile updated.");
-      onSaved();
     } catch (err) {
       setError(toApiError(err).message);
     } finally {
@@ -152,7 +152,7 @@ export function PortalProfilePage() {
 
   return (
     <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
-      <PersonalDetailsForm customer={data} onSaved={refetch} />
+      <PersonalDetailsForm customer={data} />
       <ChangePasswordForm />
     </div>
   );
