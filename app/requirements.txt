@@ -14,3 +14,5 @@ langchain-text-splitters
 langchain-groq
 pypdf
 fastembed
+pyjwt
+bcrypt
