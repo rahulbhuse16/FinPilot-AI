@@ -1,0 +1,1 @@
+import{a as e}from"./useFetch-iHmAgKbu.js";var t={list:({search:t,page:n,page_size:r,signal:i}={})=>e.get(`/customers`,{params:{search:t||void 0,page:n,page_size:r},signal:i}).then(e=>e.data),getById:(t,n)=>e.get(`/customers/${t}`,{signal:n}).then(e=>e.data),get360:(t,n)=>e.get(`/customers/${t}/360`,{signal:n}).then(e=>e.data)};export{t};

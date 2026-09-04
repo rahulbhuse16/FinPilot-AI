@@ -1,0 +1,1 @@
+function e(e){return e?Array.isArray(e)?e:Array.isArray(e.items)?e.items:[]:[]}export{e as t};
