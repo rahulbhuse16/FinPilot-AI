@@ -19,6 +19,13 @@ class Settings(BaseSettings):
     openai_api_key: str
     openai_chat_model: str = "gpt-4o-mini"
     openai_embedding_model: str = "text-embedding-3-small"
+    vapid_private_key:str
+    vapid_email : str
+    cloudinary_cloud_name: str
+    cloudinary_api_key: str
+    cloudinary_api_secret: str
+
+
 
     jwt_secret_key: str = "change-me-in-production"
     jwt_algorithm: str = "HS256"

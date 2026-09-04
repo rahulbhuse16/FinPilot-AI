@@ -1,5 +1,7 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 from pydantic import BaseModel, Field
+from sqlalchemy.orm import Session
+
 from app.core.database import get_db
 from app.schemas.rag import RAGResponse
 from app.services.rag_service import answer_question
@@ -24,13 +26,11 @@ class AskRequest(BaseModel):
 )
 async def ask_ai(
     request: AskRequest,
+    db: Session = Depends(get_db),
 ):
-
-    async with get_db() as session:
-
-        result = await answer_question(
-            session=session,
-            question=request.question,
-        )
+    result = await answer_question(
+        session=db,
+        question=request.question,
+    )
 
     return result

@@ -1,4 +1,4 @@
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import Session
 
 from app.core.config import settings
 from app.services.embedding_service import generate_embeddings
@@ -8,7 +8,7 @@ from app.services.vector_service import similarity_search
 
 
 async def answer_question(
-    session: AsyncSession,
+    session: Session,
     question: str,
 ):
 
@@ -26,14 +26,13 @@ async def answer_question(
     # 2. Retrieve relevant chunks
     # ----------------------------------
 
-    chunks = await similarity_search(
+    chunks = similarity_search(
         session=session,
         query_embedding=query_embedding,
         top_k=settings.rag_top_k,
     )
 
     if not chunks:
-
         return {
             "answer": (
                 "I couldn't find relevant information "
@@ -49,7 +48,6 @@ async def answer_question(
     context_parts = []
 
     for chunk in chunks:
-
         context_parts.append(
             f"""
 Source: {chunk["file_name"]}
@@ -59,9 +57,7 @@ Page: {chunk["page_number"]}
 """
         )
 
-    context = "\n\n---\n\n".join(
-        context_parts
-    )
+    context = "\n\n---\n\n".join(context_parts)
 
     # ----------------------------------
     # 4. Build LangChain prompt
@@ -76,9 +72,7 @@ Page: {chunk["page_number"]}
     # 5. Generate answer
     # ----------------------------------
 
-    response = await llm.ainvoke(
-        messages
-    )
+    response = await llm.ainvoke(messages)
 
     # ----------------------------------
     # 6. Return answer + citations

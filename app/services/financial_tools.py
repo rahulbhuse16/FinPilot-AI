@@ -1,17 +1,17 @@
 from uuid import UUID
 
 from langchain_core.tools import tool
-from sqlalchemy.ext.asyncio import AsyncSession
 from app.services.embedding_service import (
     generate_embeddings,
 )
+from sqlalchemy.orm import Session
 
 from app.services.vector_service import (
     similarity_search,
 )
 
 
-def build_financial_tools(session: AsyncSession):
+def build_financial_tools(session: Session):
 
     @tool
     async def get_customer_360(
@@ -34,7 +34,7 @@ def build_financial_tools(session: AsyncSession):
             get_customer_360 as fetch_customer_360,
         )
 
-        result = await fetch_customer_360(
+        result = fetch_customer_360(
             session,
             UUID(customer_id),
         )
@@ -74,7 +74,7 @@ def build_financial_tools(session: AsyncSession):
             get_customer_transactions as fetch_transactions,
         )
 
-        transactions = await fetch_transactions(
+        transactions = fetch_transactions(
             session,
             UUID(customer_id),
             limit,
@@ -111,7 +111,7 @@ def build_financial_tools(session: AsyncSession):
             get_customer_loans as fetch_loans,
         )
 
-        loans = await fetch_loans(
+        loans =  fetch_loans(
             session,
             UUID(customer_id),
         )
@@ -147,7 +147,7 @@ def build_financial_tools(session: AsyncSession):
         detect_transaction_anomalies as detect_anomalies,
     )
 
-        return await detect_anomalies(
+        return  detect_anomalies(
         session,
         UUID(customer_id),
     )
@@ -177,7 +177,7 @@ def build_financial_tools(session: AsyncSession):
             )
         )[0]
 
-        results = await similarity_search(
+        results =  similarity_search(
             session=session,
             query_embedding=query_embedding,
             top_k=5,

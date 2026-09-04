@@ -1,4 +1,5 @@
-from fastapi import APIRouter, File, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
+from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.schemas.document import DocumentResponse
@@ -28,8 +29,8 @@ MAX_FILE_SIZE = 10 * 1024 * 1024
 )
 async def upload_document(
     file: UploadFile = File(...),
+    db: Session = Depends(get_db),
 ):
-
     if file.content_type != "application/pdf":
         raise HTTPException(
             status_code=400,
@@ -44,9 +45,7 @@ async def upload_document(
             detail="File size cannot exceed 10 MB.",
         )
 
-    content_hash = calculate_file_hash(
-        content
-    )
+    content_hash = calculate_file_hash(content)
 
     pages = extract_pdf_pages(content)
 
@@ -63,45 +62,33 @@ async def upload_document(
         for chunk in chunks
     ]
 
-    embeddings = await generate_embeddings(
-        texts
+    # Async external API
+    embeddings = await generate_embeddings(texts)
+
+    # Sync database operations
+    document = create_document(
+        session=db,
+        file_name=file.filename or "unknown.pdf",
+        content_type=file.content_type,
+        file_size=len(content),
+        content_hash=content_hash,
     )
 
-    async with get_db() as session:
+    insert_chunks(
+        session=db,
+        document_id=document["id"],
+        chunks=chunks,
+        embeddings=embeddings,
+    )
 
-        try:
+    update_document_status(
+        session=db,
+        document_id=document["id"],
+        status="READY",
+        chunk_count=len(chunks),
+    )
 
-            document = await create_document(
-                session=session,
-                file_name=file.filename or "unknown.pdf",
-                content_type=file.content_type,
-                file_size=len(content),
-                content_hash=content_hash,
-            )
+    document["status"] = "READY"
+    document["chunk_count"] = len(chunks)
 
-            await insert_chunks(
-                session=session,
-                document_id=document["id"],
-                chunks=chunks,
-                embeddings=embeddings,
-            )
-
-            await update_document_status(
-                session=session,
-                document_id=document["id"],
-                status="READY",
-                chunk_count=len(chunks),
-            )
-
-            await session.commit()
-
-            document["status"] = "READY"
-            document["chunk_count"] = len(chunks)
-
-            return document
-
-        except Exception:
-
-            await session.rollback()
-
-            raise
+    return document

@@ -1,11 +1,14 @@
-from typing import AsyncGenerator, Callable
+from typing import Callable
 from uuid import UUID
 
 from fastapi import Depends, HTTPException, status
-from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
-from sqlalchemy.ext.asyncio import AsyncSession
+from fastapi.security import (
+    HTTPAuthorizationCredentials,
+    HTTPBearer,
+)
+from sqlalchemy.orm import Session
 
-from app.core.database import SessionLocal
+from app.core.database import get_db
 from app.core.security import decode_access_token
 from app.models import ROLE_ADMIN, ROLE_CUSTOMER, User
 from app.services.user_service import get_user_by_id
@@ -14,14 +17,11 @@ from app.services.user_service import get_user_by_id
 bearer_scheme = HTTPBearer(auto_error=False)
 
 
-async def get_session() -> AsyncGenerator[AsyncSession, None]:
-    async with SessionLocal() as session:
-        yield session
-
-
-async def get_current_user(
-    credentials: HTTPAuthorizationCredentials | None = Depends(bearer_scheme),
-    session: AsyncSession = Depends(get_session),
+def get_current_user(
+    credentials: HTTPAuthorizationCredentials | None = Depends(
+        bearer_scheme
+    ),
+    session: Session = Depends(get_db),
 ) -> User:
 
     unauthorized = HTTPException(
@@ -33,17 +33,22 @@ async def get_current_user(
     if credentials is None:
         raise unauthorized
 
-    payload = decode_access_token(credentials.credentials)
+    payload = decode_access_token(
+        credentials.credentials
+    )
 
     if not payload or not payload.get("sub"):
         raise unauthorized
 
     try:
         user_id = UUID(payload["sub"])
-    except ValueError:
+    except (ValueError, TypeError):
         raise unauthorized
 
-    user = await get_user_by_id(session, user_id)
+    user = get_user_by_id(
+        session,
+        user_id,
+    )
 
     if not user or not user.is_active:
         raise unauthorized
@@ -53,7 +58,7 @@ async def get_current_user(
 
 def require_roles(*roles: str) -> Callable:
 
-    async def dependency(
+    def dependency(
         user: User = Depends(get_current_user),
     ) -> User:
 
@@ -69,10 +74,11 @@ def require_roles(*roles: str) -> Callable:
 
 
 require_admin = require_roles(ROLE_ADMIN)
+
 require_customer = require_roles(ROLE_CUSTOMER)
 
 
-async def get_current_customer_id(
+def get_current_customer_id(
     user: User = Depends(require_customer),
 ) -> UUID:
 

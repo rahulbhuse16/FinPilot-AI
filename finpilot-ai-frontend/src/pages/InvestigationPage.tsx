@@ -52,6 +52,21 @@ export function InvestigationPage() {
     !!customerId && tab === "anomalies"
   );
 
+  const handleApprove=async(id:string)=>{
+
+    await loansApi.handleLoanRequest(id,{loan_id:id,
+      status:"ACTIVE"
+    })
+
+  }
+
+  const handleReject=async(id:string)=>{
+    await loansApi.handleLoanRequest(id,{loan_id:id,
+      status:"REJECTED"
+    })
+
+  }
+
   if (!selectedCustomer) {
     return (
       <div className="mx-auto max-w-5xl space-y-5 p-4 sm:p-6">
@@ -126,18 +141,205 @@ export function InvestigationPage() {
             <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
               <ul>
                 {normalizeList<Loan>(loanFetch.data).map((l) => (
-                  <li key={l.id} className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 px-5 py-3.5 last:border-0">
-                    <div>
-                      <p className="text-sm font-medium text-navy-900">{l.loan_type ?? "Loan"}</p>
-                      <p className="text-xs text-slate-500">Rate {l.interest_rate ?? "—"}%</p>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className="font-mono-num text-sm font-medium text-navy-900">
-                        {formatCompactCurrency(l.outstanding_balance)}
-                      </span>
-                      {l.status && <Badge tone={l.status.toLowerCase() === "delinquent" ? "risk" : "neutral"}>{l.status}</Badge>}
-                    </div>
-                  </li>
+                  <li
+  key={l.id}
+  className="
+    group relative overflow-hidden
+    border-b border-slate-100/80
+    px-5 py-4
+    transition-all duration-200
+    hover:bg-slate-50/70
+    last:border-0
+  "
+>
+  <div className="flex flex-wrap items-center justify-between gap-4">
+    {/* Loan Info */}
+    <div className="flex items-center gap-3">
+      {/* Loan Icon */}
+      <div
+        className="
+          flex h-10 w-10 shrink-0 items-center justify-center
+          rounded-xl
+          border border-slate-200
+          bg-white
+          shadow-sm
+          text-slate-600
+        "
+      >
+        <svg
+          className="h-4.5 w-4.5"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.8"
+        >
+          <path d="M3 10.5 12 4l9 6.5" />
+          <path d="M5 10v9h14v-9" />
+          <path d="M9 19v-5h6v5" />
+        </svg>
+      </div>
+
+      <div>
+        <p className="text-sm font-semibold tracking-[-0.01em] text-slate-900">
+          {l.loan_type ?? "Loan"}
+        </p>
+
+        <p className="mt-0.5 text-xs text-slate-500">
+          Interest rate{" "}
+          <span className="font-medium text-slate-700">
+            {l.interest_rate ?? "—"}%
+          </span>
+        </p>
+      </div>
+    </div>
+
+    {/* Right Side */}
+    <div className="flex flex-wrap items-center gap-3">
+      {/* Amount */}
+      <span className="font-mono-num text-sm font-semibold text-slate-900">
+        {formatCompactCurrency(l.outstanding_balance)}
+      </span>
+
+      {/* View Salary Slip */}
+      {l.salary_slip_url && (
+        <button
+          type="button"
+          onClick={() => window.open(l.salary_slip_url, "_blank")}
+          className="
+            inline-flex items-center gap-1.5
+            rounded-lg
+            border border-slate-200
+            bg-white
+            px-3 py-1.5
+            text-xs font-semibold
+            text-slate-600
+            shadow-sm
+            transition-all duration-200
+            hover:border-blue-300
+            hover:bg-blue-50
+            hover:text-blue-700
+            active:scale-[0.97]
+          "
+        >
+          <svg
+            className="h-3.5 w-3.5"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.8"
+          >
+            <path d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6Z" />
+            <circle cx="12" cy="12" r="2.5" />
+          </svg>
+
+          View Document
+        </button>
+      )}
+
+      {/* Status / Actions */}
+      {l.status?.toUpperCase() === "ACTIVE" ? (
+        <div
+          className="
+            inline-flex items-center gap-1.5
+            rounded-full
+            border border-emerald-200
+            bg-emerald-50
+            px-3 py-1.5
+            text-xs font-semibold
+            text-emerald-700
+          "
+        >
+          <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+          Approved
+        </div>
+      ) : l.status?.toUpperCase() === "REJECTED" ? (
+        <div
+          className="
+            inline-flex items-center gap-1.5
+            rounded-full
+            border border-red-200
+            bg-red-50
+            px-3 py-1.5
+            text-xs font-semibold
+            text-red-700
+          "
+        >
+          <span className="h-1.5 w-1.5 rounded-full bg-red-500" />
+          Rejected
+        </div>
+      ) : (
+        <div className="flex items-center gap-1.5">
+          {/* Approve */}
+          <button
+            type="button"
+            onClick={() => handleApprove(l.id)}
+            className="
+              group/approve
+              inline-flex items-center gap-1.5
+              rounded-lg
+              border border-slate-200
+              bg-white
+              px-3 py-1.5
+              text-xs font-semibold
+              text-slate-700
+              shadow-sm
+              transition-all duration-200
+              hover:border-emerald-300
+              hover:bg-emerald-50
+              hover:text-emerald-700
+              hover:shadow-emerald-100
+              active:scale-[0.97]
+            "
+          >
+            <svg
+              className="h-3.5 w-3.5"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+            >
+              <path d="m5 12 4 4L19 6" />
+            </svg>
+            Approve
+          </button>
+
+          {/* Reject */}
+          <button
+            type="button"
+            onClick={() => handleReject(l.id)}
+            className="
+              inline-flex items-center gap-1.5
+              rounded-lg
+              border border-slate-200
+              bg-white
+              px-3 py-1.5
+              text-xs font-semibold
+              text-slate-500
+              shadow-sm
+              transition-all duration-200
+              hover:border-red-200
+              hover:bg-red-50
+              hover:text-red-600
+              active:scale-[0.97]
+            "
+          >
+            <svg
+              className="h-3.5 w-3.5"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+            >
+              <path d="M6 6l12 12M18 6 6 18" />
+            </svg>
+            Reject
+          </button>
+        </div>
+      )}
+    </div>
+  </div>
+</li>
+                  
                 ))}
               </ul>
             </div>

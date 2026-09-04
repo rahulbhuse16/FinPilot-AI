@@ -1,6 +1,5 @@
-from uuid import UUID
-
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
+from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.schemas.conversation import (
@@ -22,18 +21,14 @@ router = APIRouter(
     "",
     response_model=ConversationResponse,
 )
-async def create_new_conversation(
+def create_new_conversation(
     request: CreateConversationRequest,
+    db: Session = Depends(get_db),
 ):
-
-    async with get_db() as session:
-
-        conversation = await create_conversation(
-            session=session,
-            customer_id=request.customer_id,
-            title=request.title,
-        )
-
-        await session.commit()
+    conversation = create_conversation(
+        session=db,
+        customer_id=request.customer_id,
+        title=request.title,
+    )
 
     return conversation

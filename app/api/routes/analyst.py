@@ -1,6 +1,5 @@
-from uuid import UUID
-
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends
+from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.schemas.analyst import (
@@ -28,50 +27,47 @@ router = APIRouter(
 )
 async def ask_financial_analyst(
     request: AnalystRequest,
+    db: Session = Depends(get_db),
 ):
 
-    async with get_db() as session:
+    history = get_conversation_messages(
+        db,
+        request.conversation_id,
+        limit=20,
+    )
 
-        history = await get_conversation_messages(
-            session,
-            request.conversation_id,
-            limit=20,
-        )
+    history_for_llm = [
+        {
+            "role": message["role"],
+            "content": message["content"],
+        }
+        for message in history
+    ]
 
-        history_for_llm = [
-            {
-                "role": message["role"],
-                "content": message["content"],
-            }
-            for message in history
-        ]
+    add_message(
+        session=db,
+        conversation_id=request.conversation_id,
+        role="user",
+        content=request.question,
+    )
 
-        await add_message(
-            session=session,
-            conversation_id=request.conversation_id,
-            role="user",
-            content=request.question,
-        )
+    result = await run_financial_analysis(
+        session=db,
+        question=request.question,
+        customer_id=(
+            str(request.customer_id)
+            if request.customer_id
+            else None
+        ),
+        history=history_for_llm,
+    )
 
-        result = await run_financial_analysis(
-            session=session,
-            question=request.question,
-            customer_id=(
-                str(request.customer_id)
-                if request.customer_id
-                else None
-            ),
-            history=history_for_llm,
-        )
-
-        await add_message(
-            session=session,
-            conversation_id=request.conversation_id,
-            role="assistant",
-            content=result["answer"],
-        )
-
-        await session.commit()
+    add_message(
+        session=db,
+        conversation_id=request.conversation_id,
+        role="assistant",
+        content=result["answer"],
+    )
 
     return {
         "answer": result["answer"],

@@ -2,7 +2,7 @@ from datetime import datetime
 from decimal import Decimal
 from uuid import UUID
 
-from sqlalchemy import ForeignKey, Numeric, String, func, text
+from sqlalchemy import ForeignKey, Numeric, String, Text, func, text
 from sqlalchemy.dialects.postgresql import TIMESTAMP, UUID as PGUUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -28,6 +28,10 @@ class Loan(Base):
     outstanding_amount: Mapped[Decimal] = mapped_column(Numeric(15, 2))
     interest_rate: Mapped[Decimal] = mapped_column(Numeric(5, 2))
     monthly_emi: Mapped[Decimal] = mapped_column(Numeric(15, 2))
+    salary_slip_url: Mapped[str | None] = mapped_column(
+    Text,
+    nullable=True,
+)
     status: Mapped[str] = mapped_column(
         String(30),
         server_default=text("'ACTIVE'"),

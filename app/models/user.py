@@ -3,7 +3,7 @@ from uuid import UUID
 
 from sqlalchemy import Boolean, ForeignKey, String, func, text
 from sqlalchemy.dialects.postgresql import TIMESTAMP, UUID as PGUUID
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import Base
 
@@ -43,3 +43,8 @@ class User(Base):
         TIMESTAMP(timezone=True),
         server_default=func.now(),
     )
+    notifications = relationship(
+    "Notification",
+    back_populates="user",
+    cascade="all, delete-orphan",
+)

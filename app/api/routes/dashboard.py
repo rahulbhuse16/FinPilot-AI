@@ -1,5 +1,5 @@
-from fastapi import APIRouter
-from sqlalchemy import select
+from fastapi import APIRouter, Depends
+from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.models import Customer
@@ -9,10 +9,9 @@ from app.services.dashboard_service import (
 from app.services.ai_insights_service import (
     generate_ai_insights,
 )
+from app.schemas.dashboard import DashboardOverview
+from app.schemas.ai_insights import AIInsightsResponse
 
-from app.schemas.dashboard import (DashboardOverview)
-
-from app.schemas.ai_insights import (AIInsightsResponse)
 
 router = APIRouter(
     prefix="/dashboard",
@@ -20,24 +19,33 @@ router = APIRouter(
 )
 
 
-@router.get("/overview",response_model=DashboardOverview)
-async def dashboard_overview():
+@router.get(
+    "/overview",
+    response_model=DashboardOverview,
+)
+def dashboard_overview(
+    db: Session = Depends(get_db),
+):
+    return get_dashboard_overview(db)
 
-    return await get_dashboard_overview()
 
-
-@router.get("/ai-insights",response_model=AIInsightsResponse)
-async def dashboard_ai_insights():
-
-    async with get_db() as session:
-
-        customer_ids = list(
-            await session.scalars(
-                select(Customer.id).order_by(Customer.id)
-            )
+@router.get(
+    "/ai-insights",
+    response_model=AIInsightsResponse,
+)
+async def dashboard_ai_insights(
+    db: Session = Depends(get_db),
+):
+    customer_ids = [
+        customer_id
+        for customer_id in (
+            db.query(Customer.id)
+            .order_by(Customer.id)
+            .all()
         )
+    ]
 
-        return await generate_ai_insights(
-            session,
-            customer_ids,
-        )
+    return await generate_ai_insights(
+        db,
+        customer_ids,
+    )

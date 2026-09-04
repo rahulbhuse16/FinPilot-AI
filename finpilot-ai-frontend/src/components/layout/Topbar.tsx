@@ -1,20 +1,30 @@
-import { LogOut, Menu, Wifi, WifiOff } from "lucide-react";
+import { useState } from "react";
+import { LogOut, Menu } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { useFetch } from "../../hooks/useFetch";
-import { healthApi } from "../../api/health.api";
+
 import { useAuth } from "../../hooks/useAuth";
-import { cn } from "../../utils/cn";
+import NotificationBadge from "../notification/Badge";
+import { useAppSelector } from "../../store/hooks";
+import NotificationModal from "../notification/Modal";
 
 interface TopbarProps {
   onMenuClick: () => void;
   title: string;
 }
 
-export function Topbar({ onMenuClick, title }: TopbarProps) {
-  const { data, status } = useFetch((signal) => healthApi.check(signal), [], true);
-  const healthy = status === "success" && data?.status === "healthy";
+export function Topbar({
+  onMenuClick,
+  title,
+}: TopbarProps) {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+
+  const { unreadCount } = useAppSelector(
+    (state) => state.notifications
+  );
+
+  const [showNotifications, setShowNotifications] =
+    useState(false);
 
   function handleLogout() {
     logout();
@@ -31,33 +41,38 @@ export function Topbar({ onMenuClick, title }: TopbarProps) {
         >
           <Menu className="h-5 w-5" />
         </button>
-        <h1 className="font-display text-base font-semibold text-navy-900 sm:text-lg">{title}</h1>
+
+        <h1 className="font-display text-base font-semibold text-navy-900 sm:text-lg">
+          {title}
+        </h1>
       </div>
 
-      <div className="flex items-center gap-3">
-      <div
-        className={cn(
-          "flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium",
-          status === "loading" && "bg-slate-100 text-slate-500",
-          healthy && "bg-positive-soft text-positive",
-          status === "error" && "bg-risk-soft text-risk",
-          status === "success" && !healthy && "bg-warning-soft text-warning"
+      <div className="relative flex items-center gap-3">
+        <NotificationBadge
+          count={unreadCount}
+          onClick={() =>
+            setShowNotifications((prev) => !prev)
+          }
+        />
+
+        {showNotifications && (
+          <NotificationModal
+            onClose={() => setShowNotifications(false)}
+          />
         )}
-        title="Backend connection status"
-      >
-        {healthy ? <Wifi className="h-3.5 w-3.5" /> : <WifiOff className="h-3.5 w-3.5" />}
-        <span className="hidden sm:inline">
-          {status === "loading" ? "Checking…" : healthy ? "Systems normal" : "Backend unavailable"}
-        </span>
-      </div>
 
-        <span className="hidden text-sm text-slate-500 sm:inline">{user?.full_name}</span>
+        <span className="hidden text-sm text-slate-500 sm:inline">
+          {user?.full_name}
+        </span>
+
         <button
           onClick={handleLogout}
           className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-1.5 text-sm text-slate-600 hover:bg-slate-50"
         >
           <LogOut className="h-4 w-4" />
-          <span className="hidden sm:inline">Sign out</span>
+          <span className="hidden sm:inline">
+            Sign out
+          </span>
         </button>
       </div>
     </header>

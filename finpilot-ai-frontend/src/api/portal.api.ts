@@ -36,6 +36,10 @@ export const portalApi = {
   loans: (signal?: AbortSignal) =>
     api.get<Loan[]>("/portal/loans", { signal }).then((r) => r.data),
 
+
+  dashboardStatistics: (signal?: AbortSignal) =>
+    api.get<Loan[]>("/portal/dashboard/statistics", { signal }).then((r) => r.data),
+
   anomalies: (signal?: AbortSignal) =>
     api.get<Anomaly[]>("/portal/transaction-anomalies", { signal }).then((r) => r.data),
 };

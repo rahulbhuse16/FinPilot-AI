@@ -1,41 +1,40 @@
 from contextlib import asynccontextmanager
-from typing import AsyncGenerator
+from typing import Generator
 
-from sqlalchemy import text
-from sqlalchemy.ext.asyncio import (
-    AsyncSession,
-    async_sessionmaker,
-    create_async_engine,
-)
+from sqlalchemy import create_engine, text
+from sqlalchemy.orm import Session, sessionmaker
 
 from app.core.config import settings
 
 
-engine = create_async_engine(
-    settings.sqlalchemy_database_url,
+engine = create_engine(
+    settings.database_url,
     pool_size=2,
     max_overflow=8,
     pool_pre_ping=True,
     echo=settings.debug,
 )
 
-SessionLocal = async_sessionmaker(
+SessionLocal = sessionmaker(
     bind=engine,
-    expire_on_commit=False,
+    autocommit=False,
     autoflush=False,
 )
 
 
-async def connect_db() -> None:
-    async with engine.connect() as connection:
-        await connection.execute(text("SELECT 1"))
+def connect_db() -> None:
+    with engine.connect() as connection:
+        connection.execute(text("SELECT 1"))
 
 
-async def close_db() -> None:
-    await engine.dispose()
+def close_db() -> None:
+    engine.dispose()
 
 
-@asynccontextmanager
-async def get_db() -> AsyncGenerator[AsyncSession, None]:
-    async with SessionLocal() as session:
-        yield session
+def get_db() -> Generator[Session, None, None]:
+    db = SessionLocal()
+
+    try:
+        yield db
+    finally:
+        db.close()

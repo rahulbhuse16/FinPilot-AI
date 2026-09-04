@@ -1,6 +1,7 @@
 from uuid import UUID
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
+from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.schemas.account import AccountResponse
@@ -17,14 +18,13 @@ router = APIRouter(
     "/{customer_id}/accounts",
     response_model=list[AccountResponse],
 )
-async def get_customer_accounts(
+def get_customer_accounts(
     customer_id: UUID,
+    db: Session = Depends(get_db),
 ):
-    async with get_db() as session:
-
-        accounts = await get_accounts_by_customer(
-            session,
-            customer_id,
-        )
+    accounts = get_accounts_by_customer(
+        session=db,
+        customer_id=customer_id,
+    )
 
     return accounts

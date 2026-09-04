@@ -1,5 +1,6 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 from sqlalchemy import text
+from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.schemas.health import HealthResponse
@@ -15,20 +16,15 @@ router = APIRouter(
     "",
     response_model=HealthResponse,
 )
-async def health_check():
-
+def health_check(
+    db: Session = Depends(get_db),
+):
     database_status = "healthy"
 
     try:
-
-        async with get_db() as session:
-
-            await session.execute(
-                text("SELECT 1")
-            )
+        db.execute(text("SELECT 1"))
 
     except Exception:
-
         database_status = "unhealthy"
 
     overall_status = (

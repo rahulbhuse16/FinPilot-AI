@@ -2,8 +2,10 @@ import axios, { AxiosError } from "axios";
 import type { ApiErrorShape } from "../types/api";
 import { clearStoredAuth, readStoredToken } from "../utils/authStorage";
 
-const baseURL =
-  import.meta.env.VITE_API_BASE_URL ?? "https://finpilot-3lph.onrender.com/api/v1";
+export const baseURL =
+  window.location.hostname === "localhost"
+    ? "http://localhost:8000/api/v1"
+    : "https://finpilot-3lph.onrender.com/api/v1";
 
 export const UNAUTHORIZED_EVENT = "finpilot:unauthorized";
 

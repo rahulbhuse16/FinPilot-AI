@@ -10,6 +10,19 @@ import { signedOut } from "../store/authSlice";
 import { useAppDispatch } from "../store/hooks";
 import { useAuth } from "../hooks/useAuth";
 import { homeRouteForRole } from "../utils/roles";
+import ApplyLoan from "../pages/portal/LoanApplication";
+import CreateTransaction from "../pages/portal/CreateTransaction";
+import { useSSE } from "../hooks/useSSE";
+import { RiskRadarPage } from "../pages/RiskRadarPage";
+import { AdminCopilotPage } from "../pages/AdminCopilotPage";
+import { PortalHealthPage } from "../pages/portal/PortalHealthPage";
+import { PortalScenarioPage } from "../pages/portal/PortalScenarioPage";
+import { PayLoan } from "../pages/portal/PayLoan";
+import LoanSubmittedSuccess from "../pages/portal/LoanSubmittedSuccess";
+import { LoanPaymentSummary } from "../components/loan/LoanPaymentSummary";
+import CreateAccount from "../pages/portal/CreateAccount";
+import { AddBalanceToAccount } from "../pages/portal/AddBalanceToAccount";
+import { enableWebPush } from "../api/webpush.api";
 
 const DashboardPage = lazy(() => import("../pages/DashboardPage").then((m) => ({ default: m.DashboardPage })));
 const AnalystPage = lazy(() => import("../pages/AnalystPage").then((m) => ({ default: m.AnalystPage })));
@@ -42,19 +55,60 @@ function HomeRedirect() {
   return <Navigate to={homeRouteForRole(user.role)} replace />;
 }
 
-export function AppRoutes() {
+export function AppRouter() {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
 
-  useEffect(() => {
-    function handleUnauthorized() {
-      dispatch(signedOut());
-      navigate("/login", { replace: true });
-    }
 
-    window.addEventListener(UNAUTHORIZED_EVENT, handleUnauthorized);
-    return () => window.removeEventListener(UNAUTHORIZED_EVENT, handleUnauthorized);
-  }, [dispatch, navigate]);
+  const { user } = useAuth()
+  useSSE(user?.customer_id as string)
+
+ useEffect(() => {
+  const customerId=user?.customer_id
+  if (!customerId) return;
+
+  const setupWebPush = async () => {
+    try {
+      // Ask permission first
+      const permission = await Notification.requestPermission();
+
+      console.log("🔔 Notification permission:", permission);
+
+      if (permission !== "granted") {
+        console.log("❌ Notification permission denied");
+        return;
+      }
+
+      // Permission granted → register push
+      await enableWebPush(customerId);
+
+      console.log("✅ Web Push enabled");
+    } catch (error) {
+      console.error(
+        "❌ Web Push setup failed:",
+        error
+      );
+    }
+  };
+
+  setupWebPush();
+}, []);
+
+  useEffect(() => {
+  if (!user?.customer_id) return;
+
+  if (Notification.permission !== "granted") {
+    return;
+  }
+
+  enableWebPush(user.customer_id)
+    .then(() => {
+      console.log("✅ Web Push registered");
+    })
+    .catch((error) => {
+      console.error("❌ Web Push registration failed:", error);
+    });
+}, []);
 
   return (
     <Suspense fallback={<RouteFallback />}>
@@ -71,6 +125,10 @@ export function AppRoutes() {
             <Route path="/transactions" element={<TransactionsPage />} />
             <Route path="/documents" element={<DocumentsPage />} />
             <Route path="/investigation" element={<InvestigationPage />} />
+            <Route path="/risk-radar" element={<RiskRadarPage />} />
+            <Route path="/admin-copilot" element={<AdminCopilotPage />} />
+
+
           </Route>
         </Route>
 
@@ -78,9 +136,29 @@ export function AppRoutes() {
           <Route path="/portal" element={<PortalLayout />}>
             <Route index element={<PortalOverviewPage />} />
             <Route path="accounts" element={<PortalAccountsPage />} />
+            <Route
+  path="/portal/accounts/:accountId/add-money"
+  element={<AddBalanceToAccount />}
+/>
+            <Route path="create-account" element={<CreateAccount />} />
+
             <Route path="transactions" element={<PortalTransactionsPage />} />
             <Route path="loans" element={<PortalLoansPage />} />
             <Route path="profile" element={<PortalProfilePage />} />
+            <Route path="apply" element={<ApplyLoan />} />
+            <Route path="create" element={<CreateTransaction />} />
+            <Route path="health" element={<PortalHealthPage />} />
+            <Route path="scenerio" element={<PortalScenarioPage />} />
+            <Route path="pay-loan/:loanId" element={<PayLoan />} />
+            <Route path="loan-summary/:loanId" element={<LoanPaymentSummary />} />
+
+            <Route path="loan-request-success" element={<LoanSubmittedSuccess />} />
+
+
+
+
+
+
           </Route>
         </Route>
 

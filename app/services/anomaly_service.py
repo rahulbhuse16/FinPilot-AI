@@ -1,20 +1,19 @@
 from decimal import Decimal
 from uuid import UUID
 
-from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import Session
 
 from app.models import Account, Transaction
 
 
-async def detect_transaction_anomalies(
-    session: AsyncSession,
+def detect_transaction_anomalies(
+    session: Session,
     customer_id: UUID | str,
     limit: int = 50,
 ) -> list[dict]:
 
-    result = await session.execute(
-        select(
+    transactions = (
+        session.query(
             Transaction.id,
             Transaction.amount,
             Transaction.transaction_type,
@@ -23,28 +22,42 @@ async def detect_transaction_anomalies(
             Transaction.description,
             Transaction.transaction_time,
         )
-        .join(Account, Account.id == Transaction.account_id)
-        .where(Account.customer_id == customer_id)
-        .order_by(Transaction.transaction_time.desc())
+        .join(
+            Account,
+            Account.id == Transaction.account_id,
+        )
+        .filter(
+            Account.customer_id == customer_id
+        )
+        .order_by(
+            Transaction.transaction_time.desc()
+        )
         .limit(limit)
+        .all()
     )
 
     transactions = [
-        dict(row)
-        for row in result.mappings().all()
+        {
+            "id": transaction.id,
+            "amount": transaction.amount,
+            "transaction_type": transaction.transaction_type,
+            "category": transaction.category,
+            "merchant": transaction.merchant,
+            "description": transaction.description,
+            "transaction_time": transaction.transaction_time,
+        }
+        for transaction in transactions
     ]
 
     if not transactions:
         return []
 
     amounts = [
-        Decimal(str(t["amount"]))
-        for t in transactions
+        Decimal(str(transaction["amount"]))
+        for transaction in transactions
     ]
 
-    average_amount = (
-        sum(amounts) / len(amounts)
-    )
+    average_amount = sum(amounts) / len(amounts)
 
     anomalies = []
 
@@ -56,14 +69,10 @@ async def detect_transaction_anomalies(
 
         reasons = []
 
-        # --------------------------------
         # Large transaction
-        # --------------------------------
-
         if (
             average_amount > 0
-            and amount
-            >= average_amount * Decimal("3")
+            and amount >= average_amount * Decimal("3")
         ):
             reasons.append(
                 "transaction is significantly "
@@ -71,13 +80,9 @@ async def detect_transaction_anomalies(
                 "recent average"
             )
 
-        # --------------------------------
         # High-value transfer
-        # --------------------------------
-
         if (
-            transaction["transaction_type"]
-            == "DEBIT"
+            transaction["transaction_type"] == "DEBIT"
             and amount >= Decimal("100000")
         ):
             reasons.append(
@@ -85,23 +90,17 @@ async def detect_transaction_anomalies(
             )
 
         if reasons:
-
             anomalies.append(
                 {
                     "transaction_id": str(
                         transaction["id"]
                     ),
                     "amount": str(amount),
-                    "merchant": transaction[
-                        "merchant"
-                    ],
-                    "category": transaction[
-                        "category"
-                    ],
+                    "merchant": transaction["merchant"],
+                    "category": transaction["category"],
                     "transaction_time": (
-                        transaction[
-                            "transaction_time"
-                        ].isoformat()
+                        transaction["transaction_time"]
+                        .isoformat()
                     ),
                     "reasons": reasons,
                 }

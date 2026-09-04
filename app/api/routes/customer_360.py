@@ -1,6 +1,7 @@
 from uuid import UUID
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.schemas.customer_360 import Customer360Summary
@@ -17,15 +18,14 @@ router = APIRouter(
     "/{customer_id}/360",
     response_model=Customer360Summary,
 )
-async def customer_360(
+def customer_360(
     customer_id: UUID,
+    db: Session = Depends(get_db),
 ):
-    async with get_db() as session:
-
-        customer = await get_customer_360(
-            session,
-            customer_id,
-        )
+    customer = get_customer_360(
+        db,
+        customer_id,
+    )
 
     if not customer:
         raise HTTPException(

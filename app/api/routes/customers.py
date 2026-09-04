@@ -1,6 +1,7 @@
 from uuid import UUID
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
+from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.schemas.customer import (
@@ -23,19 +24,18 @@ router = APIRouter(
     "",
     response_model=PaginatedCustomersResponse,
 )
-async def get_customers_list(
+def get_customers_list(
     search: str | None = Query(default=None),
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=20, ge=1, le=100),
+    db: Session = Depends(get_db),
 ):
-    async with get_db() as session:
-
-        customers = await get_customers(
-            session=session,
-            search=search,
-            page=page,
-            page_size=page_size,
-        )
+    customers = get_customers(
+        session=db,
+        search=search,
+        page=page,
+        page_size=page_size,
+    )
 
     return customers
 
@@ -44,14 +44,14 @@ async def get_customers_list(
     "/{customer_id}",
     response_model=CustomerResponse,
 )
-async def get_customer(customer_id: UUID):
-
-    async with get_db() as session:
-
-        customer = await get_customer_by_id(
-            session,
-            customer_id,
-        )
+def get_customer(
+    customer_id: UUID,
+    db: Session = Depends(get_db),
+):
+    customer = get_customer_by_id(
+        session=db,
+        customer_id=customer_id,
+    )
 
     if not customer:
         raise HTTPException(

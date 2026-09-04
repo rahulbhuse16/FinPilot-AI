@@ -8,7 +8,8 @@ llm = ChatGroq(
     temperature=0,
     api_key=settings.openai_api_key,
 )
-
+def get_llm():
+    return llm
 
 async def generate_answer(
     prompt,

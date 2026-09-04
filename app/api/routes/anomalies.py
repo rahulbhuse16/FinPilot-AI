@@ -1,6 +1,7 @@
 from uuid import UUID
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
+from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.services.anomaly_service import (
@@ -17,13 +18,11 @@ router = APIRouter(
 @router.get(
     "/{customer_id}/transaction-anomalies"
 )
-async def transaction_anomalies(
-    customer_id: str,
+def transaction_anomalies(
+    customer_id: UUID,
+    db: Session = Depends(get_db),
 ):
-
-    async with get_db() as session:
-
-        return await detect_transaction_anomalies(
-            session,
-            customer_id,
-        )
+    return detect_transaction_anomalies(
+        db,
+        customer_id,
+    )

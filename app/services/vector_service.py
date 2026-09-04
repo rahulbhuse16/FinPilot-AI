@@ -1,13 +1,12 @@
 from uuid import UUID
 
-from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import Session
 
 from app.models import Document, DocumentChunk
 
 
-async def insert_chunks(
-    session: AsyncSession,
+def insert_chunks(
+    session: Session,
     document_id: UUID,
     chunks: list[dict],
     embeddings: list[list[float]],
@@ -29,11 +28,11 @@ async def insert_chunks(
         ]
     )
 
-    await session.flush()
+    session.flush()
 
 
-async def similarity_search(
-    session: AsyncSession,
+def similarity_search(
+    session: Session,
     query_embedding: list[float],
     top_k: int,
 ) -> list[dict]:
@@ -42,8 +41,8 @@ async def similarity_search(
         query_embedding
     )
 
-    result = await session.execute(
-        select(
+    rows = (
+        session.query(
             DocumentChunk.id,
             DocumentChunk.document_id,
             DocumentChunk.chunk_index,
@@ -52,13 +51,27 @@ async def similarity_search(
             Document.file_name,
             (1 - distance).label("similarity"),
         )
-        .join(Document, Document.id == DocumentChunk.document_id)
-        .where(Document.status == "READY")
+        .join(
+            Document,
+            Document.id == DocumentChunk.document_id,
+        )
+        .filter(
+            Document.status == "READY"
+        )
         .order_by(distance)
         .limit(top_k)
+        .all()
     )
 
     return [
-        dict(row)
-        for row in result.mappings().all()
+        {
+            "id": row.id,
+            "document_id": row.document_id,
+            "chunk_index": row.chunk_index,
+            "content": row.content,
+            "page_number": row.page_number,
+            "file_name": row.file_name,
+            "similarity": row.similarity,
+        }
+        for row in rows
     ]

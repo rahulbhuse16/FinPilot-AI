@@ -1,10 +1,11 @@
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import Session
 
-from app.api.deps import get_session, require_admin
+from app.api.deps import require_admin
+from app.api.routes.sse import sse_manager
+from app.core.database import get_db
 from app.models import ROLE_ADMIN, ROLE_CUSTOMER, User
 from app.schemas.account import AccountResponse
 from app.schemas.admin import (
@@ -15,17 +16,20 @@ from app.schemas.admin import (
 )
 from app.schemas.auth import UserResponse
 from app.schemas.customer import CustomerResponse
+from app.schemas.loan import LoanResponse, UpdateLoanRequest
 from app.services.account_service import create_account
 from app.services.customer_service import (
     create_customer,
     delete_customer,
     update_customer,
 )
+from app.services.loan_service import update_loan_status
 from app.services.user_service import (
     create_user,
     get_customer_by_code,
     get_user_by_email,
 )
+from app.services.push_service import web_push_manager
 
 
 router = APIRouter(
@@ -35,16 +39,23 @@ router = APIRouter(
 )
 
 
+# =========================================================
+# CUSTOMERS
+# =========================================================
+
 @router.post(
     "/customers",
     response_model=CustomerResponse,
     status_code=status.HTTP_201_CREATED,
 )
-async def create_customer_route(
+def create_customer_route(
     payload: CustomerCreateRequest,
-    session: AsyncSession = Depends(get_session),
+    db: Session = Depends(get_db),
 ):
-    existing = await get_customer_by_code(session, payload.customer_code)
+    existing = get_customer_by_code(
+        db,
+        payload.customer_code,
+    )
 
     if existing:
         raise HTTPException(
@@ -52,24 +63,23 @@ async def create_customer_route(
             detail="Customer code already exists",
         )
 
-    customer = await create_customer(session, payload.model_dump())
-
-    await session.commit()
-
-    return customer
+    return create_customer(
+        db,
+        payload.model_dump(),
+    )
 
 
 @router.patch(
     "/customers/{customer_id}",
     response_model=CustomerResponse,
 )
-async def update_customer_route(
+def update_customer_route(
     customer_id: UUID,
     payload: CustomerUpdateRequest,
-    session: AsyncSession = Depends(get_session),
+    db: Session = Depends(get_db),
 ):
-    customer = await update_customer(
-        session,
+    customer = update_customer(
+        db,
         customer_id,
         payload.model_dump(exclude_none=True),
     )
@@ -80,8 +90,6 @@ async def update_customer_route(
             detail="Customer not found",
         )
 
-    await session.commit()
-
     return customer
 
 
@@ -89,11 +97,14 @@ async def update_customer_route(
     "/customers/{customer_id}",
     status_code=status.HTTP_204_NO_CONTENT,
 )
-async def delete_customer_route(
+def delete_customer_route(
     customer_id: UUID,
-    session: AsyncSession = Depends(get_session),
+    db: Session = Depends(get_db),
 ):
-    deleted = await delete_customer(session, customer_id)
+    deleted = delete_customer(
+        db,
+        customer_id,
+    )
 
     if not deleted:
         raise HTTPException(
@@ -101,40 +112,50 @@ async def delete_customer_route(
             detail="Customer not found",
         )
 
-    await session.commit()
 
+# =========================================================
+# ACCOUNTS
+# =========================================================
 
 @router.post(
     "/customers/{customer_id}/accounts",
     response_model=AccountResponse,
     status_code=status.HTTP_201_CREATED,
 )
-async def create_account_route(
+def create_account_route(
     customer_id: UUID,
     payload: AccountCreateRequest,
-    session: AsyncSession = Depends(get_session),
+    db: Session = Depends(get_db),
 ):
-    account = await create_account(
-        session,
+    return create_account(
+        db,
         customer_id,
         payload.model_dump(),
     )
 
-    await session.commit()
 
-    return account
+# =========================================================
+# USERS
+# =========================================================
 
-
-@router.get("/users", response_model=list[UserResponse])
-async def list_users(
-    session: AsyncSession = Depends(get_session),
+@router.get(
+    "/users",
+    response_model=list[UserResponse],
+)
+def list_users(
+    db: Session = Depends(get_db),
 ):
-    users = await session.scalars(
-        select(User).order_by(User.created_at.desc())
+    users = (
+        db.query(User)
+        .order_by(User.created_at.desc())
+        .all()
     )
 
     return [
-        UserResponse.model_validate(user, from_attributes=True)
+        UserResponse.model_validate(
+            user,
+            from_attributes=True,
+        )
         for user in users
     ]
 
@@ -144,11 +165,14 @@ async def list_users(
     response_model=UserResponse,
     status_code=status.HTTP_201_CREATED,
 )
-async def create_user_route(
+def create_user_route(
     payload: UserCreateRequest,
-    session: AsyncSession = Depends(get_session),
+    db: Session = Depends(get_db),
 ):
-    existing = await get_user_by_email(session, payload.email)
+    existing = get_user_by_email(
+        db,
+        payload.email,
+    )
 
     if existing:
         raise HTTPException(
@@ -159,13 +183,17 @@ async def create_user_route(
     customer_id = None
 
     if payload.role == ROLE_CUSTOMER:
+
         if not payload.customer_code:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="customer_code is required for customer users",
             )
 
-        customer = await get_customer_by_code(session, payload.customer_code)
+        customer = get_customer_by_code(
+            db,
+            payload.customer_code,
+        )
 
         if not customer:
             raise HTTPException(
@@ -175,15 +203,75 @@ async def create_user_route(
 
         customer_id = customer.id
 
-    user = await create_user(
-        session,
+    user = create_user(
+        db,
         email=payload.email,
         full_name=payload.full_name,
         password=payload.password,
-        role=ROLE_ADMIN if payload.role == ROLE_ADMIN else ROLE_CUSTOMER,
+        role=(
+            ROLE_ADMIN
+            if payload.role == ROLE_ADMIN
+            else ROLE_CUSTOMER
+        ),
         customer_id=customer_id,
     )
 
-    await session.commit()
+    return UserResponse.model_validate(
+        user,
+        from_attributes=True,
+    )
 
-    return UserResponse.model_validate(user, from_attributes=True)
+
+# =========================================================
+# LOANS
+# =========================================================
+
+@router.patch(
+    "/loans/{loan_id}",
+    response_model=LoanResponse,
+)
+async def update_loan(
+    loan_id: UUID,
+    payload: UpdateLoanRequest,
+    db: Session = Depends(get_db),
+):
+    try:
+        loan = update_loan_status(
+            session=db,
+            payload=payload
+        )
+
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(exc),
+        )
+
+    if not loan:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Loan not found",
+        )
+
+    # -----------------------------------------------------
+    # REAL-TIME CUSTOMER NOTIFICATION
+    # -----------------------------------------------------
+    print("🚨 ABOUT TO PUBLISH LOAN SSE")
+
+    await sse_manager.publish(
+        customer_id=str(loan.customer_id),
+        event="loan.status_changed",
+        data={
+            "loan_id": str(loan.id),
+            "status": loan.status,
+        },
+    )
+    web_push_manager.publish(
+    customer_id=str(loan.customer_id),
+    title="Loan Approved",
+    body="Your loan has been approved.",
+    url="/loans",
+)
+
+    return loan
+

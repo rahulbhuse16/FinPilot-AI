@@ -1,8 +1,8 @@
 import hashlib
 from uuid import UUID
 
-from sqlalchemy import func, update
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import func
+from sqlalchemy.orm import Session
 
 from app.models import Document
 
@@ -11,8 +11,8 @@ def calculate_file_hash(content: bytes) -> str:
     return hashlib.sha256(content).hexdigest()
 
 
-async def create_document(
-    session: AsyncSession,
+def create_document(
+    session: Session,
     file_name: str,
     content_type: str,
     file_size: int,
@@ -29,8 +29,8 @@ async def create_document(
 
     session.add(document)
 
-    await session.flush()
-    await session.refresh(document)
+    session.flush()
+    session.refresh(document)
 
     return {
         "id": document.id,
@@ -43,19 +43,24 @@ async def create_document(
     }
 
 
-async def update_document_status(
-    session: AsyncSession,
+def update_document_status(
+    session: Session,
     document_id: UUID,
     status: str,
     chunk_count: int,
 ) -> None:
 
-    await session.execute(
-        update(Document)
-        .where(Document.id == document_id)
-        .values(
-            status=status,
-            chunk_count=chunk_count,
-            updated_at=func.now(),
+    (
+        session.query(Document)
+        .filter(Document.id == document_id)
+        .update(
+            {
+                Document.status: status,
+                Document.chunk_count: chunk_count,
+                Document.updated_at: func.now(),
+            },
+            synchronize_session=False,
         )
     )
+
+    session.flush()

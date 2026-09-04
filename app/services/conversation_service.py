@@ -1,13 +1,13 @@
 from uuid import UUID
 
-from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import Session
 
-from app.models import Conversation, Message
+from app.models.conversation import Conversation,Message
 
 
-async def create_conversation(
-    session: AsyncSession,
+
+def create_conversation(
+    session: Session,
     customer_id: UUID | None,
     title: str | None,
 ) -> dict:
@@ -19,8 +19,8 @@ async def create_conversation(
 
     session.add(conversation)
 
-    await session.flush()
-    await session.refresh(conversation)
+    session.commit()
+    session.refresh(conversation)
 
     return {
         "id": conversation.id,
@@ -31,8 +31,8 @@ async def create_conversation(
     }
 
 
-async def add_message(
-    session: AsyncSession,
+def add_message(
+    session: Session,
     conversation_id: UUID,
     role: str,
     content: str,
@@ -46,8 +46,8 @@ async def add_message(
 
     session.add(message)
 
-    await session.flush()
-    await session.refresh(message)
+    session.flush()
+    session.refresh(message)
 
     return {
         "id": message.id,
@@ -57,27 +57,37 @@ async def add_message(
     }
 
 
-async def get_conversation_messages(
-    session: AsyncSession,
+def get_conversation_messages(
+    session: Session,
     conversation_id: UUID,
     limit: int = 20,
 ) -> list[dict]:
 
-    result = await session.execute(
-        select(
+    messages = (
+        session.query(
             Message.id,
             Message.role,
             Message.content,
             Message.created_at,
         )
-        .where(Message.conversation_id == conversation_id)
-        .order_by(Message.created_at.desc())
+        .filter(
+            Message.conversation_id == conversation_id
+        )
+        .order_by(
+            Message.created_at.desc()
+        )
         .limit(limit)
+        .all()
     )
 
     rows = [
-        dict(row)
-        for row in result.mappings().all()
+        {
+            "id": message.id,
+            "role": message.role,
+            "content": message.content,
+            "created_at": message.created_at,
+        }
+        for message in messages
     ]
 
     return list(reversed(rows))

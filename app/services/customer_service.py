@@ -1,7 +1,7 @@
 from uuid import UUID
 
-from sqlalchemy import func, or_, select
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import func, or_
+from sqlalchemy.orm import Session
 
 from app.models import Customer
 
@@ -18,44 +18,45 @@ CUSTOMER_COLUMNS = (
 )
 
 
-async def get_customer_by_id(
-    session: AsyncSession,
+def get_customer_by_id(
+    session: Session,
     customer_id: UUID,
 ) -> dict | None:
 
-    result = await session.execute(
-        select(*CUSTOMER_COLUMNS).where(
-            Customer.id == customer_id
-        )
+    row = (
+        session.query(*CUSTOMER_COLUMNS)
+        .filter(Customer.id == customer_id)
+        .one_or_none()
     )
 
-    row = result.mappings().one_or_none()
-
-    return dict(row) if row else None
+    return dict(row._mapping) if row else None
 
 
-async def create_customer(
-    session: AsyncSession,
+def create_customer(
+    session: Session,
     values: dict,
 ) -> dict:
 
     customer = Customer(**values)
 
     session.add(customer)
-
-    await session.flush()
-    await session.refresh(customer)
+    session.flush()
+    session.refresh(customer)
 
     return _serialize(customer)
 
 
-async def update_customer(
-    session: AsyncSession,
+def update_customer(
+    session: Session,
     customer_id: UUID,
     updates: dict,
 ) -> dict | None:
 
-    customer = await session.get(Customer, customer_id)
+    customer = (
+        session.query(Customer)
+        .filter(Customer.id == customer_id)
+        .first()
+    )
 
     if not customer:
         return None
@@ -63,23 +64,27 @@ async def update_customer(
     for field, value in updates.items():
         setattr(customer, field, value)
 
-    await session.flush()
-    await session.refresh(customer)
+    session.flush()
+    session.refresh(customer)
 
     return _serialize(customer)
 
 
-async def delete_customer(
-    session: AsyncSession,
+def delete_customer(
+    session: Session,
     customer_id: UUID,
 ) -> bool:
 
-    customer = await session.get(Customer, customer_id)
+    customer = (
+        session.query(Customer)
+        .filter(Customer.id == customer_id)
+        .first()
+    )
 
     if not customer:
         return False
 
-    await session.delete(customer)
+    session.delete(customer)
 
     return True
 
@@ -97,8 +102,8 @@ def _serialize(customer: Customer) -> dict:
     }
 
 
-async def get_customers(
-    session: AsyncSession,
+def get_customers(
+    session: Session,
     search: str | None = None,
     page: int = 1,
     page_size: int = 20,
@@ -106,12 +111,12 @@ async def get_customers(
 
     offset = (page - 1) * page_size
 
-    filters = []
+    query = session.query(Customer)
 
     if search:
         search_pattern = f"%{search}%"
 
-        filters.append(
+        query = query.filter(
             or_(
                 Customer.full_name.ilike(search_pattern),
                 Customer.email.ilike(search_pattern),
@@ -119,27 +124,18 @@ async def get_customers(
             )
         )
 
-    total = await session.scalar(
-        select(func.count())
-        .select_from(Customer)
-        .where(*filters)
-    )
+    total = query.count()
 
-    result = await session.execute(
-        select(*CUSTOMER_COLUMNS)
-        .where(*filters)
+    customers = (
+        query
         .order_by(Customer.full_name)
         .limit(page_size)
         .offset(offset)
+        .all()
     )
 
-    items = [
-        dict(row)
-        for row in result.mappings().all()
-    ]
-
     return {
-        "items": items,
+        "items": [_serialize(customer) for customer in customers],
         "total": total,
         "page": page,
         "page_size": page_size,

@@ -1,6 +1,7 @@
 from uuid import UUID
 
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Depends, Query
+from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.schemas.transaction import TransactionResponse
@@ -19,20 +20,17 @@ router = APIRouter(
     "/{customer_id}/transactions",
     response_model=list[TransactionResponse],
 )
-async def get_transactions(
+def get_transactions(
     customer_id: UUID,
     limit: int = Query(
         default=50,
         ge=1,
         le=200,
     ),
+    session: Session = Depends(get_db),
 ):
-    async with get_db() as session:
-
-        transactions = await get_customer_transactions(
-            session,
-            customer_id,
-            limit,
-        )
-
-    return transactions
+    return get_customer_transactions(
+        session,
+        customer_id,
+        limit,
+    )

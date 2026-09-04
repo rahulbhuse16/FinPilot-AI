@@ -59,3 +59,43 @@ class DashboardOverview(BaseModel):
     anomalies: list[AnomalySummary]
     customer_intelligence: list[CustomerIntelligence]
     rag: RagSummary
+
+
+
+
+
+class BalanceTrendItem(BaseModel):
+    month: str
+    balance: Decimal
+
+
+class IncomeExpenseItem(BaseModel):
+    month: str
+    income: Decimal
+    expense: Decimal
+
+
+class SpendingCategoryItem(BaseModel):
+    category: str
+    amount: Decimal
+
+
+class CashFlowItem(BaseModel):
+    month: str
+    credits: Decimal
+    debits: Decimal
+
+
+class LoanRepaymentResponse(BaseModel):
+    paid: Decimal
+    remaining: Decimal
+    total: Decimal
+    percentage: Decimal
+
+
+class DashboardStatisticsResponse(BaseModel):
+    balance_trend: list[BalanceTrendItem]
+    income_expense: list[IncomeExpenseItem]
+    spending_by_category: list[SpendingCategoryItem]
+    cash_flow: list[CashFlowItem]
+    loan_repayment: LoanRepaymentResponse

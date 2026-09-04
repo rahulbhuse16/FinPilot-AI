@@ -6,7 +6,7 @@ from langchain_core.messages import (
     HumanMessage,
 )
 
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import Session
 
 from app.services import llm_service
 from app.services.financial_tools import (
@@ -146,7 +146,7 @@ not a financial advisor.
 
 
 async def generate_ai_insights(
-    session: AsyncSession,
+    session: Session,
     customer_ids: list[UUID],
 ) -> dict:
 
