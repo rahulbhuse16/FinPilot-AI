@@ -1,0 +1,14 @@
+services:
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+
+    image: react-finpilot-app:latest
+
+    container_name: react-frontend
+
+    ports:
+      - "8080:80"
+
+    restart: unless-stopped

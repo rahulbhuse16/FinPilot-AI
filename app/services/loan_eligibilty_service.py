@@ -12,7 +12,10 @@ from pypdf import PdfReader
 from langchain_core.prompts import ChatPromptTemplate
 
 from app.core.config import settings
+from app.services.document_pipeline import process_salary_slip_for_rag
 from app.services.llm_service import get_llm
+from sqlalchemy.orm import Session
+
 
 
 # ============================================================
@@ -126,6 +129,7 @@ class SalarySlipAnalysis(BaseModel):
 async def checkLoanEligigtibiltyForAmountByAI(
     salary_slip: UploadFile,
     loan_amount: Decimal,
+    db:Session
 ) -> dict[str, Any]:
 
     # --------------------------------------------------------
@@ -156,6 +160,13 @@ async def checkLoanEligigtibiltyForAmountByAI(
 
     try:
         file_content = await salary_slip.read()
+
+        document = await process_salary_slip_for_rag(
+            file_content=file_content,
+            file_name=salary_slip.filename or "salary-slip.pdf",
+            content_type=salary_slip.content_type or "",
+            db=db,
+        )
 
     except Exception as exc:
         raise HTTPException(
@@ -493,6 +504,9 @@ Analyze this salary slip:
     # --------------------------------------------------------
     # 15. ELIGIBLE
     # --------------------------------------------------------
+
+
+    
 
     return {
         "eligible": True,

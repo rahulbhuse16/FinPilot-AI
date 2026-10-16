@@ -309,6 +309,7 @@ async def create_loan(
     eligibility = await checkLoanEligigtibiltyForAmountByAI(
         salary_slip=salary_slip,
         loan_amount=payload.principal_amount,
+        db=session
     )
 
     if not eligibility["eligible"]:
