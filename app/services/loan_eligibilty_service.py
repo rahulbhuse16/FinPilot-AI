@@ -161,12 +161,7 @@ async def checkLoanEligigtibiltyForAmountByAI(
     try:
         file_content = await salary_slip.read()
 
-        document = await process_salary_slip_for_rag(
-            file_content=file_content,
-            file_name=salary_slip.filename or "salary-slip.pdf",
-            content_type=salary_slip.content_type or "",
-            db=db,
-        )
+        
 
     except Exception as exc:
         raise HTTPException(
@@ -504,7 +499,12 @@ Analyze this salary slip:
     # --------------------------------------------------------
     # 15. ELIGIBLE
     # --------------------------------------------------------
-
+    await process_salary_slip_for_rag(
+                file_content=file_content,
+                file_name=salary_slip.filename or "salary-slip.pdf",
+                content_type=salary_slip.content_type or "",
+                db=db,
+            )
 
     
 
