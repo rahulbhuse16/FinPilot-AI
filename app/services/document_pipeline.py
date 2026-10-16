@@ -1,4 +1,3 @@
-
 from typing import Any
 
 from fastapi import HTTPException
@@ -27,6 +26,7 @@ async def process_salary_slip_for_rag(
 ) -> dict[str, Any]:
     """Ingest a salary slip into the RAG document store."""
 
+    # 1. Validate the file
     if content_type != "application/pdf":
         raise HTTPException(
             status_code=400,
@@ -45,10 +45,10 @@ async def process_salary_slip_for_rag(
             detail="Salary slip must be less than 10 MB.",
         )
 
-    # 1. Calculate document hash
+    # 2. Calculate document hash
     content_hash = calculate_file_hash(file_content)
 
-    # 2. Extract PDF pages
+    # 3. Extract PDF pages
     pages = extract_pdf_pages(file_content)
 
     if not pages:
@@ -57,7 +57,7 @@ async def process_salary_slip_for_rag(
             detail="Could not extract text from salary slip.",
         )
 
-    # 3. Split text into chunks
+    # 4. Split text into chunks
     chunks = create_chunks(pages)
 
     if not chunks:
@@ -66,9 +66,8 @@ async def process_salary_slip_for_rag(
             detail="No text chunks generated from salary slip.",
         )
 
+    # 5. Generate one embedding per chunk
     texts = [chunk["content"] for chunk in chunks]
-
-    # 4. Generate embeddings
     embeddings = await generate_embeddings(texts)
 
     if len(embeddings) != len(chunks):
@@ -77,31 +76,32 @@ async def process_salary_slip_for_rag(
             detail="Embedding count does not match chunk count.",
         )
 
-    # 5. Store document and vectors
+    # 6. Store the document and its chunks
     try:
-        # Assumes these helpers do not commit internally.
-        with db.begin():
-            document = create_document(
-                session=db,
-                file_name=file_name,
-                content_type=content_type,
-                file_size=len(file_content),
-                content_hash=content_hash,
-            )
+        document = create_document(
+            session=db,
+            file_name=file_name,
+            content_type=content_type,
+            file_size=len(file_content),
+            content_hash=content_hash,
+        )
 
-            insert_chunks(
-                session=db,
-                document_id=document["id"],
-                chunks=chunks,
-                embeddings=embeddings,
-            )
+        insert_chunks(
+            session=db,
+            document_id=document["id"],
+            chunks=chunks,
+            embeddings=embeddings,
+        )
 
-            update_document_status(
-                session=db,
-                document_id=document["id"],
-                status="READY",
-                chunk_count=len(chunks),
-            )
+        update_document_status(
+            session=db,
+            document_id=document["id"],
+            status="READY",
+            chunk_count=len(chunks),
+        )
+
+        # Persist all document and chunk changes together.
+        db.commit()
 
         document["status"] = "READY"
         document["chunk_count"] = len(chunks)
@@ -109,5 +109,5 @@ async def process_salary_slip_for_rag(
         return document
 
     except Exception:
-        # The transaction rolls back if a database write fails.
+        db.rollback()
         raise
